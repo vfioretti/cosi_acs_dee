@@ -1,0 +1,259 @@
+{
+    "uncollimated": [
+        {
+            "path_lab": "/Users/ciabattoni/COSI/COSI_ACS_DEE/cosi_acs_dee/benchmarking/comparison/DATA/NRL/uncollimated",
+            "name": "NRL",
+            "sources": [
+                {
+                    "source_name": "Am241",
+                    "file_lab": "data_Am241.dat",
+                    "file_bkg": ["data_bkg.dat"],
+                    "file_sim": "/Users/ciabattoni/COSI/COSI_ACS_DEE/cosi_acs_dee/benchmarking/comparison/SIM0_NRL/GEOM_TYPE8/BGO_ABSL_TYPE6/REFL_TYPE1/REFL2_TYPE4/10000/Am241/not_collimated/1-20/SiPM.dat",
+                    "bin_width": 1,
+                    "lines": [
+                        {
+                            "energy": 60,
+                            "channel_range": [35, 60],
+                            "model": "double_gaus",
+                            "initial_params_channel": [[0.6, 0.2], [26, 2], [50, 5], [0.3, 0.1], [20, 2], [40, 5]],
+                            "initial_params_energy": [[0.9, 0.2], [36, 2], [65, 3], [0.2, 0.1], [15, 2], [55, 3]]
+                        }
+                    ]
+                },
+                {
+                    "source_name": "Na22",
+                    "file_lab": "data_Na22.dat",
+                    "file_bkg": ["data_bkg.dat"],
+                    "file_sim": "/Users/ciabattoni/COSI/COSI_ACS_DEE/cosi_acs_dee/benchmarking/comparison/SIM0_NRL/GEOM_TYPE8/BGO_ABSL_TYPE6/REFL_TYPE1/REFL2_TYPE4/10000/Na22/not_collimated/1-1/SiPM.dat",
+                    "bin_width": 3,
+                    "lines": [
+                        {
+                            "energy": 511,
+                            "channel_range": [300, 500],
+                            "model": "gaus_lin",
+                            "initial_params_channel": [[0.3, 0.2], [70, 20], [450, 50], [0, 0.001], [0, 0.01]],
+                            "initial_params_energy": [[0.3, 0.2], [82, 5], [507, 5], [-1e-8, 1e-7], [0, 0.001]]
+                        },
+                        {
+                            "energy": 1275,
+                            "channel_range": [950, 1200],
+                            "model": "gaus_lin",
+                            "initial_params_channel": [[0.06, 0.03], [120, 20], [1140, 50], [0, 0.001], [0, 0.01]],
+                            "initial_params_energy": [[0.07, 0.02], [138, 5], [1270, 5], [-1e-8, 1e-7], [0, 0.001]]
+                        }
+                    ]
+                },
+                {
+                    "source_name": "Cs137",
+                    "file_lab": "data_Cs137.dat",
+                    "file_bkg": ["data_bkg.dat"],
+                    "file_sim": "/Users/ciabattoni/COSI/COSI_ACS_DEE/cosi_acs_dee/benchmarking/comparison/SIM0_NRL/GEOM_TYPE8/BGO_ABSL_TYPE6/REFL_TYPE1/REFL2_TYPE4/10000/Cs137/not_collimated/1-20/SiPM.dat",
+                    "bin_width": 2,
+                    "lines": [
+                        {
+                            "energy": 662,
+                            "channel_range": [450, 700],
+                            "model": "gaus_lin",
+                            "initial_params_channel": [[0.6, 0.2], [84, 20], [590, 50], [0, 0.001], [0, 0.01]],
+                            "initial_params_energy": [[0.6, 0.2], [93, 5], [662, 5], [0, 0.0001], [0, 0.001]]
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "path_lab": "/Users/ciabattoni/COSI/COSI_ACS_DEE/cosi_acs_dee/benchmarking/comparison/DATA/SSL/uncollimated",
+            "name": "SSL",
+            "sources": [
+                {
+                    "source_name": "Am241",
+                    "file_lab": "data_Am241.dat",
+                    "file_bkg": ["data_bkg1.dat", "data_bkg2.dat", "data_bkg3.dat"],
+                    "file_sim": "/Users/ciabattoni/COSI/COSI_ACS_DEE/cosi_acs_dee/benchmarking/comparison/SIM0_SSL/GEOM_TYPE9/BGO_ABSL_TYPE6/REFL_TYPE1/REFL2_TYPE4/1000000/Am241/not_collimated/1-1/SiPM.dat",
+                    "bin_width": 1,
+                    "lines": [
+                        {
+                            "energy": 60,
+                            "channel_range": [1000, 2000],
+                            "model": "double_gaus",
+                            "initial_params_channel": [[28, 2], [835, 5], [1385, 5], [9, 2], [650, 5], [1180, 5]],
+                            "initial_params_energy": [[1.3, 0.2], [36, 2], [60, 2], [0.5, 0.1], [34, 2], [54, 3]]
+                        }
+                    ]
+                },
+                {
+                    "source_name": "Cd109",
+                    "file_lab": "data_Cd109.dat",
+                    "file_bkg": ["data_bkg1.dat", "data_bkg2.dat", "data_bkg3.dat"],
+                    "file_sim": "/Users/ciabattoni/COSI/COSI_ACS_DEE/cosi_acs_dee/benchmarking/comparison/SIM0_SSL/GEOM_TYPE9/BGO_ABSL_TYPE6/REFL_TYPE1/REFL2_TYPE4/1000000/Cd109/not_collimated/1-20/SiPM.dat",
+                    "bin_width": 1,
+                    "lines": [
+                        {
+                            "energy": 88,
+                            "channel_range": [1400, 2500],
+                            "model": "double_gaus",
+                            "initial_params_channel": [[23, 2], [930, 5], [2060, 5], [5, 2], [794, 5], [1646, 5]],
+                            "initial_params_energy": [[0.8, 0.2], [38, 2], [90, 3], [0.3, 0.1], [35, 2], [77, 5]]
+                        }
+                    ]
+                },
+                {
+                    "source_name": "Co57",
+                    "file_lab": "data_Co57.dat",
+                    "file_bkg": ["data_bkg1.dat", "data_bkg2.dat", "data_bkg3.dat"],
+                    "file_sim": "/Users/ciabattoni/COSI/COSI_ACS_DEE/cosi_acs_dee/benchmarking/comparison/SIM0_SSL/GEOM_TYPE9/BGO_ABSL_TYPE6/REFL_TYPE1/REFL2_TYPE4/1000000/Co57/not_collimated/1-1/SiPM.dat",
+                    "bin_width": 1,
+                    "lines": [
+                        {
+                            "energy": 122,
+                            "channel_range": [2000, 3600],
+                            "model": "double_gaus",
+                            "initial_params_channel": [[22, 2], [1060, 5], [2845, 5], [5, 2], [794, 5], [2242, 5]],
+                            "initial_params_energy": [[0.8, 0.2], [40, 3], [122, 5], [0.3, 0.1], [35, 2], [100, 5]]
+                        }
+                    ]
+                },
+                {
+                    "source_name": "Ba133",
+                    "file_lab": "data_Ba133.dat",
+                    "file_bkg": ["data_bkg1_Ba133.dat", "data_bkg2_Ba133.dat"],
+                    "file_sim": "/Users/ciabattoni/COSI/COSI_ACS_DEE/cosi_acs_dee/benchmarking/comparison/SIM0_SSL/GEOM_TYPE9/BGO_ABSL_TYPE6/REFL_TYPE1/REFL2_TYPE4/1000000/Ba133/not_collimated/1-1/SiPM.dat",
+                    "bin_width": 2,
+                    "lines": [
+                        {
+                            "energy": 356,
+                            "channel_range": [6000, 10000],
+                            "model": "four_gaus",
+                            "initial_params_channel": [[10, 2], [1730, 5], [8495, 5], [0, 0.01], [0, 0.1]],
+                            "initial_params_energy": [[1, 0.2], [20, 5], [356, 5], [-1, 0.2], [1, 0.2]]
+                        }
+                    ]
+                },
+                {
+                    "source_name": "Na22",
+                    "file_lab": "data_Na22.dat",
+                    "file_bkg": ["data_bkg1.dat", "data_bkg2.dat", "data_bkg3.dat"],
+                    "file_sim": "/Users/ciabattoni/COSI/COSI_ACS_DEE/cosi_acs_dee/benchmarking/comparison/SIM0_SSL/GEOM_TYPE9/BGO_ABSL_TYPE6/REFL_TYPE1/REFL2_TYPE4/1000000/Na22/not_collimated/1-1/SiPM.dat",
+                    "bin_width": 3,
+                    "lines": [
+                        {
+                            "energy": 511,
+                            "channel_range": [10000, 14000],
+                            "model": "gaus_lin",
+                            "initial_params_channel": [[12, 5], [2050, 20], [12400, 50], [0, 0.001], [0, 0.01]],
+                            "initial_params_energy": [[0.5, 0.2], [83, 5], [510, 5], [-1, 0.2], [1, 0.2]]
+                        },
+                        {
+                            "energy": 1275,
+                            "channel_range": [27000, 34000],
+                            "model": "gaus_lin",
+                            "initial_params_channel": [[3, 1], [3030, 20], [31290, 50], [0, 0.001], [0, 0.01]],
+                            "initial_params_energy": [[0.13, 0.2], [125, 5], [1280, 5], [-1, 0.2], [1, 0.2]]
+                        }
+                    ]
+                },
+                {
+                    "source_name": "Cs137",
+                    "file_lab": "data_Cs137.dat",
+                    "file_bkg": ["data_bkg1.dat", "data_bkg2.dat", "data_bkg3.dat"],
+                    "file_sim": "/Users/ciabattoni/COSI/COSI_ACS_DEE/cosi_acs_dee/benchmarking/comparison/SIM0_SSL/GEOM_TYPE9/BGO_ABSL_TYPE6/REFL_TYPE1/REFL2_TYPE4/1000000/Cs137/not_collimated/1-1/SiPM.dat",
+                    "bin_width": 4,
+                    "lines": [
+                        {
+                            "energy": 662,
+                            "channel_range": [12000, 18000],
+                            "model": "gaus_lin",
+                            "initial_params_channel": [[16, 5], [2350, 20], [16100, 50], [0, 0.001], [0, 0.01]],
+                            "initial_params_energy": [[0.6, 0.2], [93, 5], [660, 5], [-1, 0.2], [1, 0.2]]
+                        }
+                    ]
+                },
+                {
+                    "source_name": "Co60",
+                    "file_lab": "data_Co60.dat",
+                    "file_bkg": ["data_bkg1.dat", "data_bkg2.dat", "data_bkg3.dat"],
+                    "file_sim": "/Users/ciabattoni/COSI/COSI_ACS_DEE/cosi_acs_dee/benchmarking/comparison/SIM0_SSL/GEOM_TYPE9/BGO_ABSL_TYPE6/REFL_TYPE1/REFL2_TYPE4/1000000/Co60/not_collimated/1-1/SiPM.dat",
+                    "bin_width": 6,
+                    "lines": [
+                        {
+                            "energy": 1173,
+                            "channel_range": [23000, 35000],
+                            "model": "double_gaus_lin",
+                            "initial_params_channel": [[6.5, 2], [3120, 10], [28685, 10], [5.7, 2], [3295, 10], [32600, 10], [0, 0.001], [0, 0.01]],
+                            "initial_params_energy": [[0.26, 0.2], [127, 5], [1172, 10], [0.23, 0.05], [132, 5], [1331, 10], [0, 0.001], [0, 0.01]]
+                        },
+                        {
+                            "energy": 1333,
+                            "channel_range": [23000, 35000],
+                            "model": "double_gaus_lin",
+                            "initial_params_channel": [[5.7, 2], [3295, 10], [32600, 10], [6.5, 2], [3120, 10], [28685, 10], [0, 0.001], [0, 0.01]],
+                            "initial_params_energy": [[0.23, 0.05], [132, 5], [1331, 10], [0.26, 0.2], [127, 5], [1172, 10], [0, 0.001], [0, 0.01]]
+                        }
+                    ]
+                },
+                {
+                    "source_name": "Y88",
+                    "file_lab": "data_Y88.dat",
+                    "file_bkg": ["data_bkg1.dat", "data_bkg2.dat", "data_bkg3.dat"],
+                    "file_sim": "/Users/ciabattoni/COSI/COSI_ACS_DEE/cosi_acs_dee/benchmarking/comparison/SIM0_SSL/GEOM_TYPE9/BGO_ABSL_TYPE6/REFL_TYPE1/REFL2_TYPE4/1000000/Y88/not_collimated/1-1/SiPM.dat",
+                    "bin_width": 6,
+                    "lines": [
+                        {
+                            "energy": 898,
+                            "channel_range": [16000, 25000],
+                            "model": "gaus_lin",
+                            "initial_params_channel": [[8, 5], [2760, 50], [21950, 100], [0, 0.001], [0, 0.01]],
+                            "initial_params_energy": [[0.3, 0.2], [110, 5], [898, 5], [-1, 0.2], [1, 0.2]]
+                        },
+                        {
+                            "energy": 1836,
+                            "channel_range": [38000, 50000],
+                            "model": "gaus_lin",
+                            "initial_params_channel": [[5, 2], [3880, 50], [45000, 100], [0, 0.001], [0, 0.01]],
+                            "initial_params_energy": [[0.2, 0.1], [156, 5], [1840, 5], [-1, 0.2], [1, 0.2]]
+                        }
+                    ]
+                }
+            ]
+        }
+    ],
+    "collimated": [
+        {
+            "path_lab": "/Users/ciabattoni/COSI/COSI_ACS_DEE/cosi_acs_dee/benchmarking/comparison/DATA/NRL/collimated",
+            "name": "NRL",
+            "positions": [1,10,2,11,3,12,4,5,6,7,8,9],
+            "sources": [
+                {
+                    "source_name": "Am241",
+                    "file_lab": "data_Am241_pos*.dat",
+                    "file_bkg": ["data_bkg.dat"],
+                    "file_sim": "/Users/ciabattoni/COSI/COSI_ACS_DEE/cosi_acs_dee/benchmarking/comparison/SIM0_NRL/GEOM_TYPE8/BGO_ABSL_TYPE6/REFL_TYPE1/REFL2_TYPE4/100000/Am241/collimated/1-1/SiPM.dat",
+                    "lines": [
+                        {
+                            "energy": 60,
+                            "channel_range": [35, 60],
+                            "model": "double_gaus",
+                            "initial_params": [[0.6, 0.2], [30, 2], [45, 2], [0.05, 0.01], [20, 2], [40, 2]],
+                            "bin_width": 1
+                        }
+                    ]
+                },
+                {
+                    "source_name": "Cs137",
+                    "file_lab": "data_Cs137_pos*.dat",
+                    "file_bkg": ["data_bkg.dat"],
+                    "file_sim": "/Users/ciabattoni/COSI/COSI_ACS_DEE/cosi_acs_dee/benchmarking/comparison/SIM0_NRL/GEOM_TYPE8/BGO_ABSL_TYPE6/REFL_TYPE1/REFL2_TYPE4/100000/Cs137/collimated/1-1/SiPM.dat",
+                    "lines": [
+                        {
+                            "energy": 662,
+                            "channel_range": [450, 700],
+                            "model": "gaus_lin",
+                            "initial_params": [[0.4, 0.1], [100, 5], [620, 5], [0, 0.001], [0, 0.01]],
+                            "bin_width": 4
+                        }
+                    ]
+                }
+            ]
+        }
+    ]
+}

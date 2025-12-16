@@ -1,0 +1,18 @@
+name: BGO_Y0_0               # Name of the crystal
+fwhm_noise: 21               # FWHM of the electronic noise
+m_cal: 3.839                 # Angular coefficient of the linear photon-energy relation (E = m_cal * ph + q_cal)
+q_cal: 5.2                   # Intercept of the linear photon-energy relation (E = m_cal * ph + q_cal)
+em_cal: 0.005                # Uncertainty in m_cal
+eq_cal: 0.5                  # Uncertainty in q_cal
+x_len_mm: 194                # Length along x of the crystal (in mm) (x is the long side of the large face)
+y_len_mm: 111                # Length along y of the crystal (in mm) (y is the short side of the large face)
+z_len_mm: 23                 # Length along z of the crystal (in mm) (z is the thickness)
+NbinX: 19                    # Number of spatial bins along x
+NbinY: 11                    # Number of spatial bins along y
+NbinZ: 2                     # Number of spatial bins along z
+x_to_megalib: [0, 0, -1]     # Conversion from bogemms 'x' to megalib 'x' coordinate
+y_to_megalib: [1, 0, 0]      # Conversion from bogemms 'y' to megalib 'y' coordinate
+z_to_megalib: [0, 1, 0]      # Conversion from bogemms 'z' to megalib 'z' coordinate
+E_min_keV: 10                # Minimum energy to consider for the energy binning (in keV)
+E_max_keV: 1000              # Maximum energy to consider for the energy binning (in keV)
+num_bins: 3                  # Number of energy bins

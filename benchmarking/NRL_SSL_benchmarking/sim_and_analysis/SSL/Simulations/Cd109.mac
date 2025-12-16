@@ -1,0 +1,19 @@
+/run/verbose 0
+
+# source definition
+/gps/particle ion
+/gps/ion 48 109
+/gps/pos/type Volume
+/gps/pos/shape Cylinder
+/gps/pos/centre -4.76 0. 61.775 cm
+/gps/pos/radius 2.5 mm
+/gps/pos/halfz 1.25 mm
+/gps/pos/rot1 0 1 0
+/gps/pos/rot2 1 0 0
+/gps/ang/type iso
+/gps/energy 0. keV
+
+# Set number of particles and start
+#/random/resetEngineFrom currentEvent.rndm
+/run/beamOn 1000
+/random/saveThisRun

@@ -1,0 +1,36 @@
+### Input parameters for BGO shield with SiPMs simulation
+
+# Define the number of the initial and final run (the total number of runs will be run_stop - run_start + 1)
+run_start = 1
+run_stop = 1
+
+# Define the path where to create the working directory
+G4PATH = /blasco/users/ciabattoni/G4_Projects/bogemms_hpc/COSI/detector_response/dee_crystals/Simulations
+
+# Define the simulation ID of the working directory (just to have an identifier number in case of necessity)
+sim_id = 0
+
+# Define the number of events to simulate
+N_in = 1000
+
+# Define the energy range [keV]
+E_min = 10
+E_max = 1000
+
+# Define the spectral index
+index = 0
+
+# Define the x, y and z sizes of the BGO panel [mm]
+xlen = 198
+ylen = 62.5602
+zlen = 25
+
+# Define how to run the simulation (0: nohup, 1: slurm)
+isslurm = 1
+
+# Define the job name
+job_name = Z45910-crystal
+
+# Define the number of theads and MPI tasks
+num_threads = 1
+num_tasks = 20

@@ -1,0 +1,19 @@
+/run/verbose 0
+
+# source definition
+/gps/particle gamma
+/gps/pos/type Plane
+/gps/pos/shape Rectangle
+/gps/pos/centre 0. 0. 30. cm
+/gps/pos/halfx 100. mm
+/gps/pos/halfy 50. mm
+/gps/ene/type Pow
+/gps/ene/alpha -2.17
+/gps/ene/min 80 keV
+/gps/ene/max 150 keV
+/gps/direction 0 0 -1
+
+# Set number of particles and start
+/random/resetEngineFrom currentEvent.rndm
+/run/beamOn 100
+/random/saveThisRun

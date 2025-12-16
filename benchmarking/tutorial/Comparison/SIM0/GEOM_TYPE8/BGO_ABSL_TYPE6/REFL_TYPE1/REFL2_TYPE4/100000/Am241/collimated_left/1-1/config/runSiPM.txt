@@ -1,0 +1,42 @@
+### Input parameters for BGO shield with SiPMs simulation
+
+# Define the number of the initial and final run (the total number of runs will be run_stop - run_final + 1)
+run_start = 1
+run_stop = 1
+
+# Define the path where to create the working directory
+G4PATH = /blasco/users/ciabattoni/G4_Projects/bogemms_hpc/COSI/benchmark_BGO+SiPM/Simulations_XWall_NRL
+
+# Define the simulation ID of the working directory (just to have an identifier number in case of necessity)
+sim_id = 0
+
+# Define the geometry type (3: old, 4: new (table), 7: new (shelf), 8: XWall_NRL)
+geom_type = 8
+
+# Define the BGO abs. length type (1: 10cm, 2: 30.3cm, 3: 200cm, 4: 300cm, 5: 1000cm, 6: 500cm)
+bgo_absl_type = 6
+
+# Define the reflective surface type
+refl_type = 1
+
+# Define the reflective surface type of the SiPM face (geom4 & geom7)
+refl2_type = 4
+
+# Define the number of events to simulate
+N_in = 100000
+
+# Define the source: Am241 (60keV), Na22 (511keV), Cs137 (662keV)
+source = Am241
+
+# Define how to run the simulation (0: nohup, 1: slurm)
+ismorgana = 1
+
+# Define if a bias is present (left, right, forward or back)
+bias = left
+
+# Define the job name
+job_name = Am241
+
+# Define the number of threads and MPI tasks
+num_threads = 1
+num_tasks = 40
