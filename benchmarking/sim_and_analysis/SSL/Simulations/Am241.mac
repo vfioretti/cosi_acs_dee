@@ -15,6 +15,4 @@
 /process/had/rdm/nucleusLimits 241 241 95 95
 
 # Set number of particles and start
-#/random/resetEngineFrom currentEvent.rndm
 /run/beamOn 1000
-/random/saveThisRun
