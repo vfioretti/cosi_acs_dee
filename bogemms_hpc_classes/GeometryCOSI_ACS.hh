@@ -1,22 +1,4 @@
-/***************************************************************************
-                          GeometryCOSI_ACS.hh    
-    description:          Mass model of COSI ACS, based on mass model in 
-                          MEGAlib for the balloon
-                             -------------------
-    begin                : 2023
-    Authors              : A. Ciabattoni (INAF OAS Bologna) alex.ciabattoni@inaf.it
-  
- ***************************************************************************/
-
-/***************************************************************************
- *                                                                         *
- *   This program is free software for non commercial purpose              *
- *   and for public research institutes; you can redistribute it and/or    *
- *   modify it under the terms of the GNU General Public License.          *
- *   For commercial purpose see appropriate license terms                  *
- *                                                                         *
- ***************************************************************************/
-// Copyright 2025 Valentina Fioretti
+// Copyright 2025 Valentina Fioretti, Alex Ciabattoni
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -30,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 // **********************************************************************
-
 #ifndef GeometryCOSI_ACS_H
 #define GeometryCOSI_ACS_H
 #include "globals.hh"

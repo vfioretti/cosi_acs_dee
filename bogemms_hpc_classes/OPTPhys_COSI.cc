@@ -1,28 +1,4 @@
-//
-// ********************************************************************
-// * License and Disclaimer                                           *
-// *                                                                  *
-// * The  Geant4 software  is  copyright of the Copyright Holders  of *
-// * the Geant4 Collaboration.  It is provided  under  the terms  and *
-// * conditions of the Geant4 Software License,  included in the file *
-// * LICENSE and available at  http://cern.ch/geant4/license .  These *
-// * include a list of copyright holders.                             *
-// *                                                                  *
-// * Neither the authors of this software system, nor their employing *
-// * institutes,nor the agencies providing financial support for this *
-// * work  make  any representation or  warranty, express or implied, *
-// * regarding  this  software system or assume any liability for its *
-// * use.  Please see the license in the file  LICENSE  and URL above *
-// * for the full disclaimer and the limitation of liability.         *
-// *                                                                  *
-// * This  code  implementation is the result of  the  scientific and *
-// * technical work of the GEANT4 collaboration.                      *
-// * By using,  copying,  modifying or  distributing the software (or *
-// * any work based  on the software)  you  agree  to acknowledge its *
-// * use  in  resulting  scientific  publications,  and indicate your *
-// * acceptance of all terms of the Geant4 Software license.          *
-// ********************************************************************
-// Copyright 2025 Valentina Fioretti
+// Copyright 2025 Valentina Fioretti, Alex Ciabattoni
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -36,27 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 // **********************************************************************
-//
-//
-// ***************************************************************************
-//                          OPTPhys.cc  -  description
-//                             -------------------
-//    Author        : Valentina Fioretti
-//    creation date : 31/03/2016
-//    email         : fioretti@iasfbo.inaf.it
-// ***************************************************************************/
-//
-//
 
 #if defined (GEANT4_11_1)
 
-#include "OPTPhys.hh"
+#include "OPTPhys_COSI.hh"
 
 #include "G4SystemOfUnits.hh"
 #include "G4PhysicalConstants.hh"
 #include "G4UnitsTable.hh"
 #include "G4LossTableManager.hh"
-#include "THELGlobalMemory.hh"
+#include "BoGEMMSGlobalMemory.hh"
 
 #include "FTFP_BERT.hh"
 #include "G4EmStandardPhysics.hh"
@@ -79,7 +44,7 @@
 #include "G4RegionStore.hh"
 #include "G4ProductionCuts.hh"
 
-OPTPhys::OPTPhys()
+OPTPhys_COSI::OPTPhys_COSI()
 {
     G4LossTableManager::Instance();
     verboseLevel    = 1;
@@ -155,15 +120,15 @@ OPTPhys::OPTPhys()
 }
 
 
-OPTPhys::~OPTPhys()
+OPTPhys_COSI::~OPTPhys_COSI()
 {
     
 }
 
-PhysDerivedRegister<OPTPhys> OPTPhys::reg("OPTPhys");
+PhysDerivedRegister<OPTPhys_COSI> OPTPhys_COSI::reg("OPTPhys_COSI");
 
 
-void OPTPhys::SetCuts()
+void OPTPhys_COSI::SetCuts()
 {
 
     SetDefaultCutValue(defaultCutValue);

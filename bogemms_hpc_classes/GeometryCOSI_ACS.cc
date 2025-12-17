@@ -1,22 +1,4 @@
-/***************************************************************************
-                          GeometryCOSI_EMXwall.cc    
-    description:          Mass model of COSI ACS, based on mass model in 
-                          MEGAlib for the balloon
-                             -------------------
-    begin                : 2023
-    Authors              : A. Ciabattoni (INAF OAS Bologna) alex.ciabattoni@inaf.it
-  
- ***************************************************************************/
-
-/***************************************************************************
- *                                                                         *
- *   This program is free software for non commercial purpose              *
- *   and for public research institutes; you can redistribute it and/or    *
- *   modify it under the terms of the GNU General Public License.          *
- *   For commercial purpose see appropriate license terms                  *
- *                                                                         *
- ***************************************************************************/
-// Copyright 2025 Valentina Fioretti
+// Copyright 2025 Valentina Fioretti, Alex Ciabattoni
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -31,7 +13,7 @@
 // limitations under the License.
 // **********************************************************************
 
-#include "GeometryCOSI_EMXwall.hh"
+#include "GeometryCOSI_ACS.hh"
 #include "G4Element.hh"
 #include "G4Material.hh"
 #include "G4Box.hh"
@@ -48,7 +30,7 @@
 #include "G4SubtractionSolid.hh"
 #include "G4Region.hh"
 #include "G4RegionStore.hh"
-#include "THELGlobalMemory.hh"
+#include "BoGEMMSGlobalMemory.hh"
 #include "globals.hh"
 #include "G4NistManager.hh"
 #include "G4PVReplica.hh"
@@ -76,7 +58,7 @@
 // CADMesh
 #include "CADMesh.hh"
 
-GeometryCOSI_EMXwall::GeometryCOSI_EMXwall()
+GeometryCOSI_ACS::GeometryCOSI_ACS()
 : G4VUserDetectorConstruction(), target_limit(NULL)
 {
 
@@ -86,16 +68,16 @@ GeometryCOSI_EMXwall::GeometryCOSI_EMXwall()
 
 }
 
-GeometryCOSI_EMXwall::~GeometryCOSI_EMXwall() {
+GeometryCOSI_ACS::~GeometryCOSI_ACS() {
 
     delete target_limit;
 
 }
 
-DerivedRegister<GeometryCOSI_EMXwall> GeometryCOSI_EMXwall::reg("GeometryCOSI_EMXwall");
+DerivedRegister<GeometryCOSI_ACS> GeometryCOSI_ACS::reg("GeometryCOSI_ACS");
 
 
-G4VPhysicalVolume* GeometryCOSI_EMXwall::Construct() {
+G4VPhysicalVolume* GeometryCOSI_ACS::Construct() {
 
     //DefineMaterials();
     World_phys = gm.ConstructWorld();
@@ -105,40 +87,55 @@ G4VPhysicalVolume* GeometryCOSI_EMXwall::Construct() {
 	
 }
 
-G4VPhysicalVolume* GeometryCOSI_EMXwall::ConstructGeometry(G4VPhysicalVolume* World_phys) {
+G4VPhysicalVolume* GeometryCOSI_ACS::ConstructGeometry(G4VPhysicalVolume* World_phys) {
 
     /* experiment type */
     // 3: BGO + SiPM prototype
-    G4int ACS_exp_type = 3;
+    G4int ACS_exp_type = 0;
+    gm.config->readInto(ACS_exp_type, "GEOM.COSI.ACS.EXPERIMENT");
+    G4cout << "GEOM.COSI.ACS.EXPERIMENT: " << ACS_exp_type << G4endl;
 
     if (ACS_exp_type == 3) { /* SiPM model */
 
         /* --------------------- PARAMETERS ----------------------- */
 
-        /* geometry case: 8 for NRL, 9 for SSL */
+        /* vacuum or not vacuum in the laboratory */
+        G4int vacuum_flag = 0;
+        gm.config->readInto(vacuum_flag, "GEOM.COSI.ACS.VACUUM");
+        G4cout << "GEOM.COSI.ACS.VACUUM: " << vacuum_flag << G4endl;
+
+        /* geometry case */
         G4int setGeomType = 0.;
         gm.config->readInto(setGeomType, "GEOM.COSI.ACS.TYPE");
         G4cout << "GEOM.COSI.ACS.TYPE: " << setGeomType << G4endl;
 
-        /* set BGO absorption length case: 1: 10cm, 2: 30.3cm, 3: 200cm, 4: 300cm, 5: 1000cm, 6: 500cm */
+        /* set BGO absorption length case */
         G4int BGO_absl_type = 0; // absorption length case
         gm.config->readInto(BGO_absl_type, "PHYS.COSI.BGO.ABSL.TYPE");
         G4cout << "PHYS.COSI.BGO.ABSL.TYPE: " << BGO_absl_type << G4endl;
 
-        /* set BGO light yield */
-        G4double BGO_light_yield = 8.2; // default value (in photons/keV)
-        gm.config->readInto(BGO_light_yield, "PHYS.COSI.BGO.LIGHTYIELD");
-        G4cout << "PHYS.COSI.BGO.LIGHTYIELD: " << BGO_light_yield << G4endl;
+        /* set if the BGO light yield is constant or not */
+        G4int BGO_constant_yield = 1;
+        gm.config->readInto(BGO_constant_yield, "PHYS.COSI.BGO.CONST.YIELD");
+        G4cout << "PHYS.COSI.BGO.CONST.YIELD: " << BGO_constant_yield << G4endl;
 
         /* set if sources are collimated */
         G4int is_collimated = 0;
         gm.config->readInto(is_collimated, "GEOM.COSI.COLLIMATED");
-        G4cout << "GEOM.COSI.COLLIMATED: " << is_collimated << G4endl;
+        G4cout << "GEOM.COSI.COLLIMATED: " << BGO_constant_yield << G4endl;
 
         /* set the source type */
         G4int source = 0;
         gm.config->readInto(source, "GEOM.COSI.SOURCE");
         G4cout << "GEOM.COSI.SOURCE: " << source << G4endl;      
+
+        /* set the x-y beam coordinates */
+        G4double beamX = 0.;
+        G4double beamY = 0.;
+        gm.config->readInto(beamX, "GEOM.COSI.BEAMX");
+        G4cout << "GEOM.COSI.BEAMX: " << beamX << G4endl;
+        gm.config->readInto(beamY, "GEOM.COSI.BEAMY");
+        G4cout << "GEOM.COSI.BEAMY: " << beamY << G4endl;
 
         /* optical surface case */
         G4int setReflSurfaceType = 0;
@@ -149,24 +146,42 @@ G4VPhysicalVolume* GeometryCOSI_EMXwall::ConstructGeometry(G4VPhysicalVolume* Wo
         gm.config->readInto(setReflSurface2Type, "PHYS.ACS.OPTSURFACE2.WRAPPER");
         G4cout << "PHYS.ACS.OPTSURFACE2.WRAPPER: " << setReflSurface2Type << G4endl;
 
-        /* set the x-y source coordinates (position of the collimator) */
-        G4double beamX = 0.;
-        G4double beamY = 0.;
-        gm.config->readInto(beamX, "GEOM.COSI.BEAMX");
-        G4cout << "GEOM.COSI.BEAMX: " << beamX << G4endl;
-        gm.config->readInto(beamY, "GEOM.COSI.BEAMY");
-        G4cout << "GEOM.COSI.BEAMY: " << beamY << G4endl;
+        /* presence of a lead floor */
+        G4int is_floor = 0;
+        gm.config->readInto(is_floor, "GEOM.COSI.FLOOR");
+        G4cout << "GEOM.COSI.FLOOR: " << is_floor << G4endl;  
 
         /* set volumes sensitive */
         G4int chamber_sens = 0;
         gm.config->readInto(chamber_sens, "SENSITIVE.CHAMBER");
         G4cout << "SENSITIVE.CHAMBER: " << chamber_sens << G4endl;
+        G4int Al_sens = 0;
+        gm.config->readInto(Al_sens, "SENSITIVE.AL");
+        G4cout << "SENSITIVE.AL: " << Al_sens << G4endl;
         G4int plastic_sens = 0;
         gm.config->readInto(plastic_sens, "SENSITIVE.PLASTIC");
         G4cout << "SENSITIVE.PLASTIC: " << plastic_sens << G4endl;
+        G4int Al_layer_sens = 0;
+        gm.config->readInto(Al_layer_sens, "SENSITIVE.AL.LAYER");
+        G4cout << "SENSITIVE.AL.LAYER: " << Al_layer_sens << G4endl;
         G4int table_sens = 0;
         gm.config->readInto(table_sens, "SENSITIVE.TABLE");
         G4cout << "SENSITIVE.TABLE: " << table_sens << G4endl;
+        G4int refl3_sens = 0;
+        gm.config->readInto(refl3_sens, "SENSITIVE.REFL3");
+        G4cout << "SENSITIVE.REFL3: " << refl3_sens << G4endl;
+        G4int refl2_sens = 0;
+        gm.config->readInto(refl2_sens, "SENSITIVE.REFL2");
+        G4cout << "SENSITIVE.REFL2: " << refl2_sens << G4endl;
+        G4int refl22_sens = 0;
+        gm.config->readInto(refl22_sens, "SENSITIVE.REFL22");
+        G4cout << "SENSITIVE.REFL22: " << refl22_sens << G4endl;
+        G4int refl1_sens = 0;
+        gm.config->readInto(refl1_sens, "SENSITIVE.REFL1");
+        G4cout << "SENSITIVE.REFL1: " << refl1_sens << G4endl;
+        G4int refl11_sens = 0;
+        gm.config->readInto(refl11_sens, "SENSITIVE.REFL11");
+        G4cout << "SENSITIVE.REFL11: " << refl11_sens << G4endl;
         G4int scint_sens = 0;
         gm.config->readInto(scint_sens, "SENSITIVE.SCINT");
         G4cout << "SENSITIVE.SCINT: " << scint_sens << G4endl;
@@ -179,12 +194,26 @@ G4VPhysicalVolume* GeometryCOSI_EMXwall::ConstructGeometry(G4VPhysicalVolume* Wo
         G4int coll_sens = 0;
         gm.config->readInto(coll_sens, "SENSITIVE.COLL");
         G4cout << "SENSITIVE.COLL: " << coll_sens << G4endl;
+        G4int glass_sens = 0;
+        gm.config->readInto(glass_sens, "SENSITIVE.GLASS");
+        G4cout << "SENSITIVE.GLASS: " << glass_sens << G4endl;
+        G4int shelf_sens = 0;
+        gm.config->readInto(shelf_sens, "SENSITIVE.SHELF");
+        G4cout << "SENSITIVE.SHELF: " << shelf_sens << G4endl;
+        G4int Al_layer_shelf_sens = 0;
+        gm.config->readInto(Al_layer_shelf_sens, "SENSITIVE.AL.LAYER.SHELF");
+        G4cout << "SENSITIVE.AL.LAYER.SHELF: " << Al_layer_shelf_sens << G4endl;  
         G4int coat_sens = 0;
         gm.config->readInto(coat_sens, "SENSITIVE.BLACK.COAT");
         G4cout << "SENSITIVE.BLACK.COAT: " << coat_sens << G4endl;        
         G4int foam_sens = 0;
         gm.config->readInto(foam_sens, "SENSITIVE.FOAM");
         G4cout << "SENSITIVE.FOAM: " << foam_sens << G4endl;   
+        G4int floor_sens = 0;
+        gm.config->readInto(floor_sens, "SENSITIVE.FLOOR");
+        G4cout << "SENSITIVE.FLOOR: " << floor_sens << G4endl;  
+
+        /* geom_type 8 & 9 */ 
         G4int housing_sens = 0;
         gm.config->readInto(housing_sens, "SENSITIVE.HOUSING");
         G4cout << "SENSITIVE.HOUSING: " << housing_sens << G4endl;   
@@ -303,7 +332,6 @@ G4VPhysicalVolume* GeometryCOSI_EMXwall::ConstructGeometry(G4VPhysicalVolume* Wo
 
         /* --------------------- LABORATORY CHAMBER ----------------------- */
 
-        G4int vacuum_flag = 0;
         if (vacuum_flag){
             chamber_mat = materials->GetMaterial(12);
         }
@@ -357,11 +385,8 @@ G4VPhysicalVolume* GeometryCOSI_EMXwall::ConstructGeometry(G4VPhysicalVolume* Wo
 
         /* --------------------- MATERIAL OPTICAL PROPERTIES ----------------------- */
 
-        /** Here we define the optical properties of the materials **/
-
         /* Scintillator */
 
-        // Optical light emission spectrum
         std::vector<G4double> BGO_energy_emission = {2.087824*eV,   2.10417557*eV, 2.13482837*eV, 2.16058022*eV, 2.18696093*eV, 2.20792891*eV,
             2.22930285*eV, 2.25109467*eV, 2.27011532*eV, 2.29271638*eV, 2.31577199*eV, 2.33929601*eV,
             2.35984319*eV, 2.37724359*eV, 2.40921966*eV, 2.43469094*eV, 2.46070656*eV, 2.47963216*eV,
@@ -377,7 +402,6 @@ G4VPhysicalVolume* GeometryCOSI_EMXwall::ConstructGeometry(G4VPhysicalVolume* Wo
         	0.299047619048, 0.269523809524, 0.248571428571, 0.222857142857, 0.202857142857, 0.180952380952, 0.157142857143, 0.130476190476, 0.106666666667, 0.0828571428571,
         	0.0628571428571, 0.0495238095238, 0.0409523809524, 0.0314285714286, 0.0219047619048, 0.0104761904762, 0.0047619047619, 0.00190476190476, 1.11022302463e-16};
         
-        // BGO refractive index
         std::vector<G4double> BGO_energy_rindex = {1.23984198*eV, 1.24845633*eV, 1.25731871*eV, 1.2661785*eV,  1.27529519*eV, 1.28441105*eV,
          1.29379316*eV, 1.30317636*eV, 1.31283565*eV, 1.32249812*eV, 1.33244705*eV, 1.34240146*eV,
          1.35265327*eV, 1.36291303*eV, 1.37348176*eV, 1.38406116*eV, 1.39496173*eV, 1.40587593*eV,
@@ -418,7 +442,13 @@ G4VPhysicalVolume* GeometryCOSI_EMXwall::ConstructGeometry(G4VPhysicalVolume* Wo
         G4MaterialPropertiesTable* BGO_MPT = new G4MaterialPropertiesTable();
         
         // properties independent of energy
-        BGO_MPT->AddConstProperty("SCINTILLATIONYIELD", BGO_light_yield/keV);
+        if (BGO_constant_yield == 1) {
+            BGO_MPT->AddConstProperty("SCINTILLATIONYIELD", 8.2/keV);
+        } else {
+            std::vector<G4double> BGO_Energy_Yield  = { 0.001 * keV, 32 * keV,  60* keV, 81 * keV, 246 * keV, 514 * keV, 1291 * keV };
+            std::vector<G4double> BGO_Yield  = { 8.2*0.3/keV, 8.2*0.56/keV, 8.2*0.72/keV, 8.2/keV, 8.2/keV, 8.2/keV, 8.2/keV };
+            BGO_MPT->AddProperty("SCINTILLATIONYIELD", BGO_Energy_Yield, BGO_Yield, false, false);
+        }
         
         // decay time
         BGO_MPT->AddConstProperty("SCINTILLATIONTIMECONSTANT1", 300.*ns);
@@ -473,9 +503,8 @@ G4VPhysicalVolume* GeometryCOSI_EMXwall::ConstructGeometry(G4VPhysicalVolume* Wo
         BGO_MPT->DumpTable();
         bgo_mat->SetMaterialPropertiesTable(BGO_MPT);
 
-        /* Aluminum */
+        /* Aluminium */
 
-        // Aluminum refractive index
         std::vector<G4double> Al_Energy  = {1.24000318*eV,1.25000452*eV,1.26000202*eV,1.27000459*eV,1.27999544*eV,1.28999707
                 *eV,1.30000627*eV,1.3100059*eV,1.32000595*eV,1.33000288*eV,1.33999307*eV,1.35000216
                 *eV,1.35999779*eV,1.37000628*eV,1.37999419*eV,1.39000413*eV,1.40000224*eV,1.41000089
@@ -792,22 +821,18 @@ G4VPhysicalVolume* GeometryCOSI_EMXwall::ConstructGeometry(G4VPhysicalVolume* Wo
 
         if (setGeomType == 8){
 
-            // Set up some dimensions (in mm)
-            // BGO
-            G4double scintX = 198.; // BGO x length 
-            G4double scintY = 118.; // BGO y length
-            G4double scintZ = 23.; // BGO z length
-            // Reflective layers: two layers of VM2000, one layer of Tetratex, one layer of Teflon PTFE
-            G4double refl1Thick = 0.065; // thickness of first VM200 reflective layer (Janecek 2012)
-            G4double refl11Thick = 0.065; // thickness of second VM2000 reflective layer (Janecek 2012)
-            G4double refl2Thick = 0.254; // thickness of Tetratex reflective layer (prototype description)
-            G4double refl3Thick = 0.0762; // thickness of Teflon relfective layer (https://www.mcmaster.com/8569K58/)
-            // Optical coupler
-            G4double optX = 18.; // optical coupler x length
-            G4double optY = 18.; // optical coupler y length
-            G4double optZ = 1.; // optical coupler thickness
+            G4double scintX = 198.;
+            G4double scintY = 118.;
+            G4double scintZ = 23.;
+            G4double refl1Thick = 0.065; // Janecek 2012
+            G4double refl11Thick = 0.065;
+            G4double refl2Thick = 0.254; // prototype description
+            G4double refl3Thick = 0.0762; // (Teflon) https://www.mcmaster.com/8569K58/
 
-            // Half lengths of scintillator + reflective layers
+            G4double optX = 18.;
+            G4double optY = 18.;
+            G4double optZ = 1.;
+
             G4double xlen = scintX/2. + refl1Thick*2 + refl2Thick + refl3Thick;
             G4double ylen = scintY/2. + refl1Thick*2 + refl2Thick + refl3Thick;
             G4double zlen = scintZ/2. + refl1Thick*2 + refl2Thick + refl3Thick;
@@ -938,11 +963,9 @@ G4VPhysicalVolume* GeometryCOSI_EMXwall::ConstructGeometry(G4VPhysicalVolume* Wo
                 gm.AddXYZDetector(log_coat_side);
             }
 
-            // Keyword to check if the source is Am241 or Cs137
             G4int Am241_or_Cs137 = 0;
             gm.config->readInto(Am241_or_Cs137, "GEOM.COSI.AM241.OR.CS137");
             G4cout << "GEOM.COSI.AM241.OR.CS137: " << Am241_or_Cs137 << G4endl;   
-            // Case with uncollimated Am241 or Cs137 source
             if (Am241_or_Cs137 == 1 && is_collimated == 0){
                 /* Aluminum frame */
                 G4int frame_top_copy = 39;
@@ -1009,7 +1032,6 @@ G4VPhysicalVolume* GeometryCOSI_EMXwall::ConstructGeometry(G4VPhysicalVolume* Wo
                     gm.AddXYZDetector(log_foam);
             }
 
-            // Case with uncollimated Na22 source
             if (Am241_or_Cs137 == 0 && is_collimated == 0) {
                 /* Plastic casing aroung source */
                 G4int casing_copy = 45;
@@ -1065,7 +1087,6 @@ G4VPhysicalVolume* GeometryCOSI_EMXwall::ConstructGeometry(G4VPhysicalVolume* Wo
 
             }
 
-            // Case with collimated sources
             if (is_collimated == 1) {
 
                 /* 3D printed aligner */
@@ -1616,13 +1637,6 @@ G4VPhysicalVolume* GeometryCOSI_EMXwall::ConstructGeometry(G4VPhysicalVolume* Wo
 
             /* --------------------- OPTICAL SURFACES ----------------------- */
 
-            /* We use the Unified Model.*/
-            /* For each BGO, there are two optical surfaces between the BGO and the reflective layers:*/
-            /* 1. BGO -> VM2000 (non-SiPM face) */
-            /*    Finish: Polishedbackpainted, sigma = 1.3 deg (Janecek 2009), SS reflection and reflectivity to ~99% (Janecek 2012) (type1) */
-            /* 2. BGO -> Tetratex (SiPM face)   */
-            /*    Finish: Groundbackpainted, sigma = 1.3 deg (Janecek 2009), L reflection and reflectivity to ~96% (Janecek 2012) (type4) */
-
             /** BGO1 **/
 
             /* BGO1 -> VM2000 */
@@ -1653,6 +1667,153 @@ G4VPhysicalVolume* GeometryCOSI_EMXwall::ConstructGeometry(G4VPhysicalVolume* Wo
                 panel_OPTSURFACE_MPT_BGO1->AddProperty("RINDEX", OPTSURFACE_Energy_BGO1, OPTSURFACE_RIND_BGO1);
                 panel_OPTSURFACE_MPT_BGO1->DumpTable();
             }
+
+            if (setReflSurfaceType == 2) {
+                panel_OPTSURFACE_BGO1->SetModel(LUT);
+                panel_OPTSURFACE_BGO1->SetType(dielectric_LUT);
+
+                panel_OPTSURFACE_BGO1->SetFinish(polishedvm2000air);
+
+                std::vector<G4double> OPTSURFACE_Energy_BGO1 = {1.547868 *eV, 1.569420 *eV, 1.593627 *eV, 1.618593 *eV, 1.631371 *eV, 1.657543 *eV, 1.696090 *eV, 1.748719 *eV, 1.789094 *eV, 1.850510 *eV, 1.919260 *eV, 1.990116 *eV, 2.066403 *eV, 2.137659 *eV, 2.206125 *eV, 2.270773 *eV, 2.352641 *eV, 2.455133 *eV, 2.561657 *eV, 2.637962 *eV, 2.736958 *eV, 2.843674 *eV, 3.002039 *eV, 3.107373 *eV, 3.162862 *eV, 3.195469 *eV, 3.212026 *eV, 3.220369 *eV, 3.245660 *eV, 3.254178 *eV, 3.280005 *eV, 3.315086 *eV, 3.415543 *eV, 3.492513 *eV, 3.573032 *eV, 3.657351 *eV, 3.745746 *eV, 3.948541 *eV, 4.146629 *eV, 4.381067 *eV, 4.558243 *eV, 4.714228 *eV, 4.959368 *eV};
+                std::vector<G4double> OPTSURFACE_refl_BGO1 = {0.999, 0.999, 0.996, 0.994, 0.985, 0.988, 0.990, 0.985, 0.987, 0.978, 0.970, 0.973, 0.975, 0.976, 0.982, 0.987, 0.990, 0.993, 0.997, 0.996, 0.984, 0.990, 0.985, 0.953, 0.870, 0.762, 0.657, 0.533, 0.392, 0.274, 0.157, 0.124, 0.124, 0.102, 0.0991, 0.0902, 0.0873, 0.0710, 0.0385, 0.0592, 0.0843, 0.123, 0.149}; // Janecek 2012
+
+                panel_OPTSURFACE_MPT_BGO1->AddProperty("REFLECTIVITY", OPTSURFACE_Energy_BGO1, OPTSURFACE_refl_BGO1);
+                panel_OPTSURFACE_MPT_BGO1->DumpTable();
+            }
+
+            if (setReflSurfaceType == 3) {
+                panel_OPTSURFACE_BGO1->SetModel(LUT);
+                panel_OPTSURFACE_BGO1->SetType(dielectric_LUT);
+
+                panel_OPTSURFACE_BGO1->SetFinish(etchedvm2000air);
+
+                std::vector<G4double> OPTSURFACE_Energy_BGO1 = {1.547868 *eV, 1.569420 *eV, 1.593627 *eV, 1.618593 *eV, 1.631371 *eV, 1.657543 *eV, 1.696090 *eV, 1.748719 *eV, 1.789094 *eV, 1.850510 *eV, 1.919260 *eV, 1.990116 *eV, 2.066403 *eV, 2.137659 *eV, 2.206125 *eV, 2.270773 *eV, 2.352641 *eV, 2.455133 *eV, 2.561657 *eV, 2.637962 *eV, 2.736958 *eV, 2.843674 *eV, 3.002039 *eV, 3.107373 *eV, 3.162862 *eV, 3.195469 *eV, 3.212026 *eV, 3.220369 *eV, 3.245660 *eV, 3.254178 *eV, 3.280005 *eV, 3.315086 *eV, 3.415543 *eV, 3.492513 *eV, 3.573032 *eV, 3.657351 *eV, 3.745746 *eV, 3.948541 *eV, 4.146629 *eV, 4.381067 *eV, 4.558243 *eV, 4.714228 *eV, 4.959368 *eV};
+                std::vector<G4double> OPTSURFACE_refl_BGO1 = {0.999, 0.999, 0.996, 0.994, 0.985, 0.988, 0.990, 0.985, 0.987, 0.978, 0.970, 0.973, 0.975, 0.976, 0.982, 0.987, 0.990, 0.993, 0.997, 0.996, 0.984, 0.990, 0.985, 0.953, 0.870, 0.762, 0.657, 0.533, 0.392, 0.274, 0.157, 0.124, 0.124, 0.102, 0.0991, 0.0902, 0.0873, 0.0710, 0.0385, 0.0592, 0.0843, 0.123, 0.149}; // Janecek 2012
+
+                panel_OPTSURFACE_MPT_BGO1->AddProperty("REFLECTIVITY", OPTSURFACE_Energy_BGO1, OPTSURFACE_refl_BGO1);
+                panel_OPTSURFACE_MPT_BGO1->DumpTable();
+            }
+
+            if (setReflSurfaceType == 4) {
+                panel_OPTSURFACE_BGO1->SetModel(LUT);
+                panel_OPTSURFACE_BGO1->SetType(dielectric_LUT);
+
+                panel_OPTSURFACE_BGO1->SetFinish(groundvm2000air);
+
+                std::vector<G4double> OPTSURFACE_Energy_BGO1 = {1.547868 *eV, 1.569420 *eV, 1.593627 *eV, 1.618593 *eV, 1.631371 *eV, 1.657543 *eV, 1.696090 *eV, 1.748719 *eV, 1.789094 *eV, 1.850510 *eV, 1.919260 *eV, 1.990116 *eV, 2.066403 *eV, 2.137659 *eV, 2.206125 *eV, 2.270773 *eV, 2.352641 *eV, 2.455133 *eV, 2.561657 *eV, 2.637962 *eV, 2.736958 *eV, 2.843674 *eV, 3.002039 *eV, 3.107373 *eV, 3.162862 *eV, 3.195469 *eV, 3.212026 *eV, 3.220369 *eV, 3.245660 *eV, 3.254178 *eV, 3.280005 *eV, 3.315086 *eV, 3.415543 *eV, 3.492513 *eV, 3.573032 *eV, 3.657351 *eV, 3.745746 *eV, 3.948541 *eV, 4.146629 *eV, 4.381067 *eV, 4.558243 *eV, 4.714228 *eV, 4.959368 *eV};
+                std::vector<G4double> OPTSURFACE_refl_BGO1 = {0.999, 0.999, 0.996, 0.994, 0.985, 0.988, 0.990, 0.985, 0.987, 0.978, 0.970, 0.973, 0.975, 0.976, 0.982, 0.987, 0.990, 0.993, 0.997, 0.996, 0.984, 0.990, 0.985, 0.953, 0.870, 0.762, 0.657, 0.533, 0.392, 0.274, 0.157, 0.124, 0.124, 0.102, 0.0991, 0.0902, 0.0873, 0.0710, 0.0385, 0.0592, 0.0843, 0.123, 0.149}; // Janecek 2012
+
+                panel_OPTSURFACE_MPT_BGO1->AddProperty("REFLECTIVITY", OPTSURFACE_Energy_BGO1, OPTSURFACE_refl_BGO1);
+                panel_OPTSURFACE_MPT_BGO1->DumpTable();
+            }
+
+            if (setReflSurfaceType == 5) {
+                panel_OPTSURFACE_BGO1->SetModel(unified);
+                panel_OPTSURFACE_BGO1->SetType(dielectric_dielectric);
+
+                panel_OPTSURFACE_BGO1->SetFinish(polishedbackpainted);
+                panel_OPTSURFACE_BGO1->SetSigmaAlpha(1.3*degree);
+                
+                std::vector<G4double> OPTSURFACE_Energy_BGO1 = {1.*eV, 3.*eV, 5.*eV, 7.*eV, 10.*eV};
+                std::vector<G4double> OPTSURFACE_refl_BGO1 = {0.999, 0.999, 0.999, 0.999, 0.999};
+                std::vector<G4double> OPTSURFACE_SPECULARLOBECONSTANT_BGO1 = { 0, 0, 0, 0, 0};
+                std::vector<G4double> OPTSURFACE_SPECULARSPIKECONSTANT_BGO1 = { 1, 1, 1, 1, 1 };
+                std::vector<G4double> OPTSURFACE_BACKSCATTERCONSTANT_BGO1 = { 0, 0, 0, 0, 0};
+                std::vector<G4double> OPTSURFACE_RIND_BGO1 = { 1.00293, 1.00293, 1.00293, 1.00293, 1.00293};
+            
+                panel_OPTSURFACE_MPT_BGO1->AddProperty("REFLECTIVITY", OPTSURFACE_Energy_BGO1, OPTSURFACE_refl_BGO1);
+                panel_OPTSURFACE_MPT_BGO1->AddProperty("SPECULARLOBECONSTANT", OPTSURFACE_Energy_BGO1, OPTSURFACE_SPECULARLOBECONSTANT_BGO1);
+                panel_OPTSURFACE_MPT_BGO1->AddProperty("SPECULARSPIKECONSTANT", OPTSURFACE_Energy_BGO1, OPTSURFACE_SPECULARSPIKECONSTANT_BGO1);
+                panel_OPTSURFACE_MPT_BGO1->AddProperty("BACKSCATTERCONSTANT", OPTSURFACE_Energy_BGO1, OPTSURFACE_BACKSCATTERCONSTANT_BGO1);
+                panel_OPTSURFACE_MPT_BGO1->AddProperty("RINDEX", OPTSURFACE_Energy_BGO1, OPTSURFACE_RIND_BGO1);
+                panel_OPTSURFACE_MPT_BGO1->DumpTable();
+            }
+
+            if (setReflSurfaceType == 6) {
+                panel_OPTSURFACE_BGO1->SetModel(unified);
+                panel_OPTSURFACE_BGO1->SetType(dielectric_metal);
+
+                panel_OPTSURFACE_BGO1->SetFinish(polished);
+                
+                std::vector<G4double> OPTSURFACE_Energy_BGO1 = {1.547868 *eV, 1.569420 *eV, 1.593627 *eV, 1.618593 *eV, 1.631371 *eV, 1.657543 *eV, 1.696090 *eV, 1.748719 *eV, 1.789094 *eV, 1.850510 *eV, 1.919260 *eV, 1.990116 *eV, 2.066403 *eV, 2.137659 *eV, 2.206125 *eV, 2.270773 *eV, 2.352641 *eV, 2.455133 *eV, 2.561657 *eV, 2.637962 *eV, 2.736958 *eV, 2.843674 *eV, 3.002039 *eV, 3.107373 *eV, 3.162862 *eV, 3.195469 *eV, 3.212026 *eV, 3.220369 *eV, 3.245660 *eV, 3.254178 *eV, 3.280005 *eV, 3.315086 *eV, 3.415543 *eV, 3.492513 *eV, 3.573032 *eV, 3.657351 *eV, 3.745746 *eV, 3.948541 *eV, 4.146629 *eV, 4.381067 *eV, 4.558243 *eV, 4.714228 *eV, 4.959368 *eV};
+                std::vector<G4double> OPTSURFACE_refl_BGO1 = {0.999, 0.999, 0.996, 0.994, 0.985, 0.988, 0.990, 0.985, 0.987, 0.978, 0.970, 0.973, 0.975, 0.976, 0.982, 0.987, 0.990, 0.993, 0.997, 0.996, 0.984, 0.990, 0.985, 0.953, 0.870, 0.762, 0.657, 0.533, 0.392, 0.274, 0.157, 0.124, 0.124, 0.102, 0.0991, 0.0902, 0.0873, 0.0710, 0.0385, 0.0592, 0.0843, 0.123, 0.149}; // Janecek 2012
+                std::vector<G4double> OPTSURFACE_SPECULARLOBECONSTANT_BGO1 = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+                std::vector<G4double> OPTSURFACE_SPECULARSPIKECONSTANT_BGO1 = { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 };
+                std::vector<G4double> OPTSURFACE_BACKSCATTERCONSTANT_BGO1 = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+                std::vector<G4double> OPTSURFACE_RIND_BGO1 = { 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293};
+            
+                panel_OPTSURFACE_MPT_BGO1->AddProperty("REFLECTIVITY", OPTSURFACE_Energy_BGO1, OPTSURFACE_refl_BGO1);
+                panel_OPTSURFACE_MPT_BGO1->AddProperty("SPECULARLOBECONSTANT", OPTSURFACE_Energy_BGO1, OPTSURFACE_SPECULARLOBECONSTANT_BGO1);
+                panel_OPTSURFACE_MPT_BGO1->AddProperty("SPECULARSPIKECONSTANT", OPTSURFACE_Energy_BGO1, OPTSURFACE_SPECULARSPIKECONSTANT_BGO1);
+                panel_OPTSURFACE_MPT_BGO1->AddProperty("BACKSCATTERCONSTANT", OPTSURFACE_Energy_BGO1, OPTSURFACE_BACKSCATTERCONSTANT_BGO1);
+                panel_OPTSURFACE_MPT_BGO1->AddProperty("RINDEX", OPTSURFACE_Energy_BGO1, OPTSURFACE_RIND_BGO1);
+                panel_OPTSURFACE_MPT_BGO1->DumpTable();
+            }
+
+            if (setReflSurfaceType == 7) {
+                panel_OPTSURFACE_BGO1->SetModel(unified);
+                panel_OPTSURFACE_BGO1->SetType(dielectric_dielectric);
+
+                panel_OPTSURFACE_BGO1->SetFinish(polishedbackpainted);
+                panel_OPTSURFACE_BGO1->SetSigmaAlpha(1.3*degree);
+                
+                std::vector<G4double> OPTSURFACE_Energy_BGO1 = {1.547868 *eV, 1.569420 *eV, 1.593627 *eV, 1.618593 *eV, 1.631371 *eV, 1.657543 *eV, 1.696090 *eV, 1.748719 *eV, 1.789094 *eV, 1.850510 *eV, 1.919260 *eV, 1.990116 *eV, 2.066403 *eV, 2.137659 *eV, 2.206125 *eV, 2.270773 *eV, 2.352641 *eV, 2.455133 *eV, 2.561657 *eV, 2.637962 *eV, 2.736958 *eV, 2.843674 *eV, 3.002039 *eV, 3.107373 *eV, 3.162862 *eV, 3.195469 *eV, 3.212026 *eV, 3.220369 *eV, 3.245660 *eV, 3.254178 *eV, 3.280005 *eV, 3.315086 *eV, 3.415543 *eV, 3.492513 *eV, 3.573032 *eV, 3.657351 *eV, 3.745746 *eV, 3.948541 *eV, 4.146629 *eV, 4.381067 *eV, 4.558243 *eV, 4.714228 *eV, 4.959368 *eV};
+                std::vector<G4double> OPTSURFACE_refl_BGO1 = {0.999, 0.999, 0.996, 0.994, 0.985, 0.988, 0.990, 0.985, 0.987, 0.978, 0.970, 0.973, 0.975, 0.976, 0.982, 0.987, 0.990, 0.993, 0.997, 0.996, 0.984, 0.990, 0.985, 0.953, 0.870, 0.762, 0.657, 0.533, 0.392, 0.274, 0.157, 0.124, 0.124, 0.102, 0.0991, 0.0902, 0.0873, 0.0710, 0.0385, 0.0592, 0.0843, 0.123, 0.149}; // Janecek 2012
+                std::vector<G4double> OPTSURFACE_SPECULARLOBECONSTANT_BGO1 = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+                std::vector<G4double> OPTSURFACE_SPECULARSPIKECONSTANT_BGO1 = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+                std::vector<G4double> OPTSURFACE_BACKSCATTERCONSTANT_BGO1 = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+                std::vector<G4double> OPTSURFACE_RIND_BGO1 = { 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293};
+            
+                panel_OPTSURFACE_MPT_BGO1->AddProperty("REFLECTIVITY", OPTSURFACE_Energy_BGO1, OPTSURFACE_refl_BGO1);
+                panel_OPTSURFACE_MPT_BGO1->AddProperty("SPECULARLOBECONSTANT", OPTSURFACE_Energy_BGO1, OPTSURFACE_SPECULARLOBECONSTANT_BGO1);
+                panel_OPTSURFACE_MPT_BGO1->AddProperty("SPECULARSPIKECONSTANT", OPTSURFACE_Energy_BGO1, OPTSURFACE_SPECULARSPIKECONSTANT_BGO1);
+                panel_OPTSURFACE_MPT_BGO1->AddProperty("BACKSCATTERCONSTANT", OPTSURFACE_Energy_BGO1, OPTSURFACE_BACKSCATTERCONSTANT_BGO1);
+                panel_OPTSURFACE_MPT_BGO1->AddProperty("RINDEX", OPTSURFACE_Energy_BGO1, OPTSURFACE_RIND_BGO1);
+                panel_OPTSURFACE_MPT_BGO1->DumpTable();
+            }
+
+            if (setReflSurfaceType == 8) {
+                panel_OPTSURFACE_BGO1->SetModel(unified);
+                panel_OPTSURFACE_BGO1->SetType(dielectric_dielectric);
+
+                panel_OPTSURFACE_BGO1->SetFinish(polishedbackpainted);
+                panel_OPTSURFACE_BGO1->SetSigmaAlpha(2*degree);
+                
+                std::vector<G4double> OPTSURFACE_Energy_BGO1 = {1.547868 *eV, 1.569420 *eV, 1.593627 *eV, 1.618593 *eV, 1.631371 *eV, 1.657543 *eV, 1.696090 *eV, 1.748719 *eV, 1.789094 *eV, 1.850510 *eV, 1.919260 *eV, 1.990116 *eV, 2.066403 *eV, 2.137659 *eV, 2.206125 *eV, 2.270773 *eV, 2.352641 *eV, 2.455133 *eV, 2.561657 *eV, 2.637962 *eV, 2.736958 *eV, 2.843674 *eV, 3.002039 *eV, 3.107373 *eV, 3.162862 *eV, 3.195469 *eV, 3.212026 *eV, 3.220369 *eV, 3.245660 *eV, 3.254178 *eV, 3.280005 *eV, 3.315086 *eV, 3.415543 *eV, 3.492513 *eV, 3.573032 *eV, 3.657351 *eV, 3.745746 *eV, 3.948541 *eV, 4.146629 *eV, 4.381067 *eV, 4.558243 *eV, 4.714228 *eV, 4.959368 *eV};
+                std::vector<G4double> OPTSURFACE_refl_BGO1 = {0.999, 0.999, 0.996, 0.994, 0.985, 0.988, 0.990, 0.985, 0.987, 0.978, 0.970, 0.973, 0.975, 0.976, 0.982, 0.987, 0.990, 0.993, 0.997, 0.996, 0.984, 0.990, 0.985, 0.953, 0.870, 0.762, 0.657, 0.533, 0.392, 0.274, 0.157, 0.124, 0.124, 0.102, 0.0991, 0.0902, 0.0873, 0.0710, 0.0385, 0.0592, 0.0843, 0.123, 0.149}; // Janecek 2012
+                std::vector<G4double> OPTSURFACE_SPECULARLOBECONSTANT_BGO1 = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+                std::vector<G4double> OPTSURFACE_SPECULARSPIKECONSTANT_BGO1 = { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 };
+                std::vector<G4double> OPTSURFACE_BACKSCATTERCONSTANT_BGO1 = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+                std::vector<G4double> OPTSURFACE_RIND_BGO1 = { 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293};
+            
+                panel_OPTSURFACE_MPT_BGO1->AddProperty("REFLECTIVITY", OPTSURFACE_Energy_BGO1, OPTSURFACE_refl_BGO1);
+                panel_OPTSURFACE_MPT_BGO1->AddProperty("SPECULARLOBECONSTANT", OPTSURFACE_Energy_BGO1, OPTSURFACE_SPECULARLOBECONSTANT_BGO1);
+                panel_OPTSURFACE_MPT_BGO1->AddProperty("SPECULARSPIKECONSTANT", OPTSURFACE_Energy_BGO1, OPTSURFACE_SPECULARSPIKECONSTANT_BGO1);
+                panel_OPTSURFACE_MPT_BGO1->AddProperty("BACKSCATTERCONSTANT", OPTSURFACE_Energy_BGO1, OPTSURFACE_BACKSCATTERCONSTANT_BGO1);
+                panel_OPTSURFACE_MPT_BGO1->AddProperty("RINDEX", OPTSURFACE_Energy_BGO1, OPTSURFACE_RIND_BGO1);
+                panel_OPTSURFACE_MPT_BGO1->DumpTable();
+            }
+            if (setReflSurfaceType == 9) {
+                panel_OPTSURFACE_BGO1->SetModel(unified);
+                panel_OPTSURFACE_BGO1->SetType(dielectric_dielectric);
+
+                panel_OPTSURFACE_BGO1->SetFinish(polishedbackpainted);
+                panel_OPTSURFACE_BGO1->SetSigmaAlpha(1.3*degree);
+                
+                std::vector<G4double> OPTSURFACE_Energy_BGO1 = {1.547868 *eV, 1.569420 *eV, 1.593627 *eV, 1.618593 *eV, 1.631371 *eV, 1.657543 *eV, 1.696090 *eV, 1.748719 *eV, 1.789094 *eV, 1.850510 *eV, 1.919260 *eV, 1.990116 *eV, 2.066403 *eV, 2.137659 *eV, 2.206125 *eV, 2.270773 *eV, 2.352641 *eV, 2.455133 *eV, 2.561657 *eV, 2.637962 *eV, 2.736958 *eV, 2.843674 *eV, 3.002039 *eV, 3.107373 *eV, 3.162862 *eV, 3.195469 *eV, 3.212026 *eV, 3.220369 *eV, 3.245660 *eV, 3.254178 *eV, 3.280005 *eV, 3.315086 *eV, 3.415543 *eV, 3.492513 *eV, 3.573032 *eV, 3.657351 *eV, 3.745746 *eV, 3.948541 *eV, 4.146629 *eV, 4.381067 *eV, 4.558243 *eV, 4.714228 *eV, 4.959368 *eV};
+                std::vector<G4double> OPTSURFACE_refl_BGO1 = {0.999, 0.999, 0.996, 0.994, 0.985, 0.988, 0.990, 0.985, 0.987, 0.978, 0.970, 0.973, 0.975, 0.976, 0.982, 0.987, 0.990, 0.993, 0.997, 0.996, 0.984, 0.990, 0.985, 0.953, 0.870, 0.762, 0.657, 0.533, 0.392, 0.274, 0.157, 0.124, 0.124, 0.102, 0.0991, 0.0902, 0.0873, 0.0710, 0.0385, 0.0592, 0.0843, 0.123, 0.149}; // Janecek 2012
+                std::vector<G4double> OPTSURFACE_SPECULARLOBECONSTANT_BGO1 = { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 };
+                std::vector<G4double> OPTSURFACE_SPECULARSPIKECONSTANT_BGO1 = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+                std::vector<G4double> OPTSURFACE_BACKSCATTERCONSTANT_BGO1 = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+                std::vector<G4double> OPTSURFACE_RIND_BGO1 = { 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293};
+            
+                panel_OPTSURFACE_MPT_BGO1->AddProperty("REFLECTIVITY", OPTSURFACE_Energy_BGO1, OPTSURFACE_refl_BGO1);
+                panel_OPTSURFACE_MPT_BGO1->AddProperty("SPECULARLOBECONSTANT", OPTSURFACE_Energy_BGO1, OPTSURFACE_SPECULARLOBECONSTANT_BGO1);
+                panel_OPTSURFACE_MPT_BGO1->AddProperty("SPECULARSPIKECONSTANT", OPTSURFACE_Energy_BGO1, OPTSURFACE_SPECULARSPIKECONSTANT_BGO1);
+                panel_OPTSURFACE_MPT_BGO1->AddProperty("BACKSCATTERCONSTANT", OPTSURFACE_Energy_BGO1, OPTSURFACE_BACKSCATTERCONSTANT_BGO1);
+                panel_OPTSURFACE_MPT_BGO1->AddProperty("RINDEX", OPTSURFACE_Energy_BGO1, OPTSURFACE_RIND_BGO1);
+                panel_OPTSURFACE_MPT_BGO1->DumpTable();
+            }
             panel_OPTSURFACE_BGO1->SetMaterialPropertiesTable(panel_OPTSURFACE_MPT_BGO1);
 
             /* BGO1 -> Tetratex (SiPM face) */
@@ -1661,7 +1822,63 @@ G4VPhysicalVolume* GeometryCOSI_EMXwall::ConstructGeometry(G4VPhysicalVolume* Wo
             G4LogicalBorderSurface* panel_BORDER2_BGO1 = new G4LogicalBorderSurface("panel_BORDER2_BGO1", phys_scint_BGO1, phys_SiPMface_BGO1, panel_OPTSURFACE2_BGO1);
 
             G4MaterialPropertiesTable* panel_OPTSURFACE2_MPT_BGO1 = new G4MaterialPropertiesTable();
+            
+            if (setReflSurface2Type == 1) {
+                panel_OPTSURFACE2_BGO1->SetModel(unified);
+                panel_OPTSURFACE2_BGO1->SetType(dielectric_dielectric);
 
+                panel_OPTSURFACE2_BGO1->SetFinish(polishedbackpainted);
+                panel_OPTSURFACE2_BGO1->SetSigmaAlpha(1.3*degree);
+                
+                std::vector<G4double> OPTSURFACE2_Energy_BGO1 = {1.573404*eV, 1.637836*eV, 1.736473*eV, 1.881399*eV, 2.029201*eV, 2.270773*eV, 2.610194*eV, 2.917275*eV, 3.195469*eV, 3.350924*eV, 3.562764*eV, 3.838520*eV, 4.146629*eV, 4.320007*eV, 4.524971*eV, 4.696371*eV, 4.939609*eV};
+                std::vector<G4double> OPTSURFACE2_refl_BGO1 = {0.870, 0.881, 0.891, 0.906, 0.916, 0.928, 0.937, 0.946, 0.954, 0.957, 0.958, 0.963, 0.964, 0.969, 0.969, 0.963, 0.972}; // Janecek 2012
+                std::vector<G4double> OPTSURFACE2_SPECULARLOBECONSTANT_BGO1 = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+                std::vector<G4double> OPTSURFACE2_SPECULARSPIKECONSTANT_BGO1 = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+                std::vector<G4double> OPTSURFACE2_BACKSCATTERCONSTANT_BGO1 = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+                std::vector<G4double> OPTSURFACE2_RIND_BGO1 = { 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293};
+            
+                panel_OPTSURFACE2_MPT_BGO1->AddProperty("REFLECTIVITY", OPTSURFACE2_Energy_BGO1, OPTSURFACE2_refl_BGO1);
+                panel_OPTSURFACE2_MPT_BGO1->AddProperty("SPECULARLOBECONSTANT", OPTSURFACE2_Energy_BGO1, OPTSURFACE2_SPECULARLOBECONSTANT_BGO1);
+                panel_OPTSURFACE2_MPT_BGO1->AddProperty("SPECULARSPIKECONSTANT", OPTSURFACE2_Energy_BGO1, OPTSURFACE2_SPECULARSPIKECONSTANT_BGO1);
+                panel_OPTSURFACE2_MPT_BGO1->AddProperty("BACKSCATTERCONSTANT", OPTSURFACE2_Energy_BGO1, OPTSURFACE2_BACKSCATTERCONSTANT_BGO1);
+                panel_OPTSURFACE2_MPT_BGO1->AddProperty("RINDEX", OPTSURFACE2_Energy_BGO1, OPTSURFACE2_RIND_BGO1);
+                panel_OPTSURFACE2_MPT_BGO1->DumpTable();
+            }
+
+            if (setReflSurface2Type == 2) {
+                panel_OPTSURFACE2_BGO1->SetModel(unified);
+                panel_OPTSURFACE2_BGO1->SetType(dielectric_dielectric);
+
+                panel_OPTSURFACE2_BGO1->SetFinish(polishedbackpainted);
+                panel_OPTSURFACE2_BGO1->SetSigmaAlpha(1.3*degree);
+                
+                std::vector<G4double> OPTSURFACE2_Energy_BGO1 = {1.573404*eV, 1.637836*eV, 1.736473*eV, 1.881399*eV, 2.029201*eV, 2.270773*eV, 2.610194*eV, 2.917275*eV, 3.195469*eV, 3.350924*eV, 3.562764*eV, 3.838520*eV, 4.146629*eV, 4.320007*eV, 4.524971*eV, 4.696371*eV, 4.939609*eV};
+                std::vector<G4double> OPTSURFACE2_refl_BGO1 = {0.870, 0.881, 0.891, 0.906, 0.916, 0.928, 0.937, 0.946, 0.954, 0.957, 0.958, 0.963, 0.964, 0.969, 0.969, 0.963, 0.972}; // Janecek 2012
+                std::vector<G4double> OPTSURFACE2_SPECULARLOBECONSTANT_BGO1 = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+                std::vector<G4double> OPTSURFACE2_SPECULARSPIKECONSTANT_BGO1 = { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 };
+                std::vector<G4double> OPTSURFACE2_BACKSCATTERCONSTANT_BGO1 = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+                std::vector<G4double> OPTSURFACE2_RIND_BGO1 = { 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293};
+            
+                panel_OPTSURFACE2_MPT_BGO1->AddProperty("REFLECTIVITY", OPTSURFACE2_Energy_BGO1, OPTSURFACE2_refl_BGO1);
+                panel_OPTSURFACE2_MPT_BGO1->AddProperty("SPECULARLOBECONSTANT", OPTSURFACE2_Energy_BGO1, OPTSURFACE2_SPECULARLOBECONSTANT_BGO1);
+                panel_OPTSURFACE2_MPT_BGO1->AddProperty("SPECULARSPIKECONSTANT", OPTSURFACE2_Energy_BGO1, OPTSURFACE2_SPECULARSPIKECONSTANT_BGO1);
+                panel_OPTSURFACE2_MPT_BGO1->AddProperty("BACKSCATTERCONSTANT", OPTSURFACE2_Energy_BGO1, OPTSURFACE2_BACKSCATTERCONSTANT_BGO1);
+                panel_OPTSURFACE2_MPT_BGO1->AddProperty("RINDEX", OPTSURFACE2_Energy_BGO1, OPTSURFACE2_RIND_BGO1);
+                panel_OPTSURFACE2_MPT_BGO1->DumpTable();
+            }
+            if (setReflSurface2Type == 3) {
+                panel_OPTSURFACE2_BGO1->SetModel(unified);
+                panel_OPTSURFACE2_BGO1->SetType(dielectric_dielectric);
+
+                panel_OPTSURFACE2_BGO1->SetFinish(groundfrontpainted);
+                
+                std::vector<G4double> OPTSURFACE2_Energy_BGO1 = {1.573404*eV, 1.637836*eV, 1.736473*eV, 1.881399*eV, 2.029201*eV, 2.270773*eV, 2.610194*eV, 2.917275*eV, 3.195469*eV, 3.350924*eV, 3.562764*eV, 3.838520*eV, 4.146629*eV, 4.320007*eV, 4.524971*eV, 4.696371*eV, 4.939609*eV};
+                std::vector<G4double> OPTSURFACE2_refl_BGO1 = {0.870, 0.881, 0.891, 0.906, 0.916, 0.928, 0.937, 0.946, 0.954, 0.957, 0.958, 0.963, 0.964, 0.969, 0.969, 0.963, 0.972}; // Janecek 2012
+
+            
+                panel_OPTSURFACE2_MPT_BGO1->AddProperty("REFLECTIVITY", OPTSURFACE2_Energy_BGO1, OPTSURFACE2_refl_BGO1);
+                panel_OPTSURFACE2_MPT_BGO1->DumpTable();
+            }
             if (setReflSurface2Type == 4) {
                 panel_OPTSURFACE2_BGO1->SetModel(unified);
                 panel_OPTSURFACE2_BGO1->SetType(dielectric_dielectric);
@@ -1684,7 +1901,6 @@ G4VPhysicalVolume* GeometryCOSI_EMXwall::ConstructGeometry(G4VPhysicalVolume* Wo
                 panel_OPTSURFACE2_MPT_BGO1->AddProperty("RINDEX", OPTSURFACE2_Energy_BGO1, OPTSURFACE2_RIND_BGO1);
                 panel_OPTSURFACE2_MPT_BGO1->DumpTable();
             }
-
             panel_OPTSURFACE2_BGO1->SetMaterialPropertiesTable(panel_OPTSURFACE2_MPT_BGO1);
 
             /* Optical coupler -> Tetratex, chamber */
@@ -1782,6 +1998,153 @@ G4VPhysicalVolume* GeometryCOSI_EMXwall::ConstructGeometry(G4VPhysicalVolume* Wo
                 panel_OPTSURFACE_MPT_BGO2->AddProperty("RINDEX", OPTSURFACE_Energy_BGO2, OPTSURFACE_RIND_BGO2);
                 panel_OPTSURFACE_MPT_BGO2->DumpTable();
             }
+
+            if (setReflSurfaceType == 2) {
+                panel_OPTSURFACE_BGO2->SetModel(LUT);
+                panel_OPTSURFACE_BGO2->SetType(dielectric_LUT);
+
+                panel_OPTSURFACE_BGO2->SetFinish(polishedvm2000air);
+
+                std::vector<G4double> OPTSURFACE_Energy_BGO2 = {1.547868 *eV, 1.569420 *eV, 1.593627 *eV, 1.618593 *eV, 1.631371 *eV, 1.657543 *eV, 1.696090 *eV, 1.748719 *eV, 1.789094 *eV, 1.850510 *eV, 1.919260 *eV, 1.990116 *eV, 2.066403 *eV, 2.137659 *eV, 2.206125 *eV, 2.270773 *eV, 2.352641 *eV, 2.455133 *eV, 2.561657 *eV, 2.637962 *eV, 2.736958 *eV, 2.843674 *eV, 3.002039 *eV, 3.107373 *eV, 3.162862 *eV, 3.195469 *eV, 3.212026 *eV, 3.220369 *eV, 3.245660 *eV, 3.254178 *eV, 3.280005 *eV, 3.315086 *eV, 3.415543 *eV, 3.492513 *eV, 3.573032 *eV, 3.657351 *eV, 3.745746 *eV, 3.948541 *eV, 4.146629 *eV, 4.381067 *eV, 4.558243 *eV, 4.714228 *eV, 4.959368 *eV};
+                std::vector<G4double> OPTSURFACE_refl_BGO2 = {0.999, 0.999, 0.996, 0.994, 0.985, 0.988, 0.990, 0.985, 0.987, 0.978, 0.970, 0.973, 0.975, 0.976, 0.982, 0.987, 0.990, 0.993, 0.997, 0.996, 0.984, 0.990, 0.985, 0.953, 0.870, 0.762, 0.657, 0.533, 0.392, 0.274, 0.157, 0.124, 0.124, 0.102, 0.0991, 0.0902, 0.0873, 0.0710, 0.0385, 0.0592, 0.0843, 0.123, 0.149}; // Janecek 2012
+
+                panel_OPTSURFACE_MPT_BGO2->AddProperty("REFLECTIVITY", OPTSURFACE_Energy_BGO2, OPTSURFACE_refl_BGO2);
+                panel_OPTSURFACE_MPT_BGO2->DumpTable();
+            }
+
+            if (setReflSurfaceType == 3) {
+                panel_OPTSURFACE_BGO2->SetModel(LUT);
+                panel_OPTSURFACE_BGO2->SetType(dielectric_LUT);
+
+                panel_OPTSURFACE_BGO2->SetFinish(etchedvm2000air);
+
+                std::vector<G4double> OPTSURFACE_Energy_BGO2 = {1.547868 *eV, 1.569420 *eV, 1.593627 *eV, 1.618593 *eV, 1.631371 *eV, 1.657543 *eV, 1.696090 *eV, 1.748719 *eV, 1.789094 *eV, 1.850510 *eV, 1.919260 *eV, 1.990116 *eV, 2.066403 *eV, 2.137659 *eV, 2.206125 *eV, 2.270773 *eV, 2.352641 *eV, 2.455133 *eV, 2.561657 *eV, 2.637962 *eV, 2.736958 *eV, 2.843674 *eV, 3.002039 *eV, 3.107373 *eV, 3.162862 *eV, 3.195469 *eV, 3.212026 *eV, 3.220369 *eV, 3.245660 *eV, 3.254178 *eV, 3.280005 *eV, 3.315086 *eV, 3.415543 *eV, 3.492513 *eV, 3.573032 *eV, 3.657351 *eV, 3.745746 *eV, 3.948541 *eV, 4.146629 *eV, 4.381067 *eV, 4.558243 *eV, 4.714228 *eV, 4.959368 *eV};
+                std::vector<G4double> OPTSURFACE_refl_BGO2 = {0.999, 0.999, 0.996, 0.994, 0.985, 0.988, 0.990, 0.985, 0.987, 0.978, 0.970, 0.973, 0.975, 0.976, 0.982, 0.987, 0.990, 0.993, 0.997, 0.996, 0.984, 0.990, 0.985, 0.953, 0.870, 0.762, 0.657, 0.533, 0.392, 0.274, 0.157, 0.124, 0.124, 0.102, 0.0991, 0.0902, 0.0873, 0.0710, 0.0385, 0.0592, 0.0843, 0.123, 0.149}; // Janecek 2012
+
+                panel_OPTSURFACE_MPT_BGO2->AddProperty("REFLECTIVITY", OPTSURFACE_Energy_BGO2, OPTSURFACE_refl_BGO2);
+                panel_OPTSURFACE_MPT_BGO2->DumpTable();
+            }
+
+            if (setReflSurfaceType == 4) {
+                panel_OPTSURFACE_BGO2->SetModel(LUT);
+                panel_OPTSURFACE_BGO2->SetType(dielectric_LUT);
+
+                panel_OPTSURFACE_BGO2->SetFinish(groundvm2000air);
+
+                std::vector<G4double> OPTSURFACE_Energy_BGO2 = {1.547868 *eV, 1.569420 *eV, 1.593627 *eV, 1.618593 *eV, 1.631371 *eV, 1.657543 *eV, 1.696090 *eV, 1.748719 *eV, 1.789094 *eV, 1.850510 *eV, 1.919260 *eV, 1.990116 *eV, 2.066403 *eV, 2.137659 *eV, 2.206125 *eV, 2.270773 *eV, 2.352641 *eV, 2.455133 *eV, 2.561657 *eV, 2.637962 *eV, 2.736958 *eV, 2.843674 *eV, 3.002039 *eV, 3.107373 *eV, 3.162862 *eV, 3.195469 *eV, 3.212026 *eV, 3.220369 *eV, 3.245660 *eV, 3.254178 *eV, 3.280005 *eV, 3.315086 *eV, 3.415543 *eV, 3.492513 *eV, 3.573032 *eV, 3.657351 *eV, 3.745746 *eV, 3.948541 *eV, 4.146629 *eV, 4.381067 *eV, 4.558243 *eV, 4.714228 *eV, 4.959368 *eV};
+                std::vector<G4double> OPTSURFACE_refl_BGO2 = {0.999, 0.999, 0.996, 0.994, 0.985, 0.988, 0.990, 0.985, 0.987, 0.978, 0.970, 0.973, 0.975, 0.976, 0.982, 0.987, 0.990, 0.993, 0.997, 0.996, 0.984, 0.990, 0.985, 0.953, 0.870, 0.762, 0.657, 0.533, 0.392, 0.274, 0.157, 0.124, 0.124, 0.102, 0.0991, 0.0902, 0.0873, 0.0710, 0.0385, 0.0592, 0.0843, 0.123, 0.149}; // Janecek 2012
+
+                panel_OPTSURFACE_MPT_BGO2->AddProperty("REFLECTIVITY", OPTSURFACE_Energy_BGO2, OPTSURFACE_refl_BGO2);
+                panel_OPTSURFACE_MPT_BGO2->DumpTable();
+            }
+
+            if (setReflSurfaceType == 5) {
+                panel_OPTSURFACE_BGO2->SetModel(unified);
+                panel_OPTSURFACE_BGO2->SetType(dielectric_dielectric);
+
+                panel_OPTSURFACE_BGO2->SetFinish(polishedbackpainted);
+                panel_OPTSURFACE_BGO2->SetSigmaAlpha(1.3*degree);
+                
+                std::vector<G4double> OPTSURFACE_Energy_BGO2 = {1.*eV, 3.*eV, 5.*eV, 7.*eV, 10.*eV};
+                std::vector<G4double> OPTSURFACE_refl_BGO2 = {0.999, 0.999, 0.999, 0.999, 0.999};
+                std::vector<G4double> OPTSURFACE_SPECULARLOBECONSTANT_BGO2 = { 0, 0, 0, 0, 0};
+                std::vector<G4double> OPTSURFACE_SPECULARSPIKECONSTANT_BGO2 = { 1, 1, 1, 1, 1 };
+                std::vector<G4double> OPTSURFACE_BACKSCATTERCONSTANT_BGO2 = { 0, 0, 0, 0, 0};
+                std::vector<G4double> OPTSURFACE_RIND_BGO2 = { 1.00293, 1.00293, 1.00293, 1.00293, 1.00293};
+            
+                panel_OPTSURFACE_MPT_BGO2->AddProperty("REFLECTIVITY", OPTSURFACE_Energy_BGO2, OPTSURFACE_refl_BGO2);
+                panel_OPTSURFACE_MPT_BGO2->AddProperty("SPECULARLOBECONSTANT", OPTSURFACE_Energy_BGO2, OPTSURFACE_SPECULARLOBECONSTANT_BGO2);
+                panel_OPTSURFACE_MPT_BGO2->AddProperty("SPECULARSPIKECONSTANT", OPTSURFACE_Energy_BGO2, OPTSURFACE_SPECULARSPIKECONSTANT_BGO2);
+                panel_OPTSURFACE_MPT_BGO2->AddProperty("BACKSCATTERCONSTANT", OPTSURFACE_Energy_BGO2, OPTSURFACE_BACKSCATTERCONSTANT_BGO2);
+                panel_OPTSURFACE_MPT_BGO2->AddProperty("RINDEX", OPTSURFACE_Energy_BGO2, OPTSURFACE_RIND_BGO2);
+                panel_OPTSURFACE_MPT_BGO2->DumpTable();
+            }
+
+            if (setReflSurfaceType == 6) {
+                panel_OPTSURFACE_BGO2->SetModel(unified);
+                panel_OPTSURFACE_BGO2->SetType(dielectric_metal);
+
+                panel_OPTSURFACE_BGO2->SetFinish(polished);
+                
+                std::vector<G4double> OPTSURFACE_Energy_BGO2 = {1.547868 *eV, 1.569420 *eV, 1.593627 *eV, 1.618593 *eV, 1.631371 *eV, 1.657543 *eV, 1.696090 *eV, 1.748719 *eV, 1.789094 *eV, 1.850510 *eV, 1.919260 *eV, 1.990116 *eV, 2.066403 *eV, 2.137659 *eV, 2.206125 *eV, 2.270773 *eV, 2.352641 *eV, 2.455133 *eV, 2.561657 *eV, 2.637962 *eV, 2.736958 *eV, 2.843674 *eV, 3.002039 *eV, 3.107373 *eV, 3.162862 *eV, 3.195469 *eV, 3.212026 *eV, 3.220369 *eV, 3.245660 *eV, 3.254178 *eV, 3.280005 *eV, 3.315086 *eV, 3.415543 *eV, 3.492513 *eV, 3.573032 *eV, 3.657351 *eV, 3.745746 *eV, 3.948541 *eV, 4.146629 *eV, 4.381067 *eV, 4.558243 *eV, 4.714228 *eV, 4.959368 *eV};
+                std::vector<G4double> OPTSURFACE_refl_BGO2 = {0.999, 0.999, 0.996, 0.994, 0.985, 0.988, 0.990, 0.985, 0.987, 0.978, 0.970, 0.973, 0.975, 0.976, 0.982, 0.987, 0.990, 0.993, 0.997, 0.996, 0.984, 0.990, 0.985, 0.953, 0.870, 0.762, 0.657, 0.533, 0.392, 0.274, 0.157, 0.124, 0.124, 0.102, 0.0991, 0.0902, 0.0873, 0.0710, 0.0385, 0.0592, 0.0843, 0.123, 0.149}; // Janecek 2012
+                std::vector<G4double> OPTSURFACE_SPECULARLOBECONSTANT_BGO2 = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+                std::vector<G4double> OPTSURFACE_SPECULARSPIKECONSTANT_BGO2 = { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 };
+                std::vector<G4double> OPTSURFACE_BACKSCATTERCONSTANT_BGO2 = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+                std::vector<G4double> OPTSURFACE_RIND_BGO2 = { 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293};
+            
+                panel_OPTSURFACE_MPT_BGO2->AddProperty("REFLECTIVITY", OPTSURFACE_Energy_BGO2, OPTSURFACE_refl_BGO2);
+                panel_OPTSURFACE_MPT_BGO2->AddProperty("SPECULARLOBECONSTANT", OPTSURFACE_Energy_BGO2, OPTSURFACE_SPECULARLOBECONSTANT_BGO2);
+                panel_OPTSURFACE_MPT_BGO2->AddProperty("SPECULARSPIKECONSTANT", OPTSURFACE_Energy_BGO2, OPTSURFACE_SPECULARSPIKECONSTANT_BGO2);
+                panel_OPTSURFACE_MPT_BGO2->AddProperty("BACKSCATTERCONSTANT", OPTSURFACE_Energy_BGO2, OPTSURFACE_BACKSCATTERCONSTANT_BGO2);
+                panel_OPTSURFACE_MPT_BGO2->AddProperty("RINDEX", OPTSURFACE_Energy_BGO2, OPTSURFACE_RIND_BGO2);
+                panel_OPTSURFACE_MPT_BGO2->DumpTable();
+            }
+
+            if (setReflSurfaceType == 7) {
+                panel_OPTSURFACE_BGO2->SetModel(unified);
+                panel_OPTSURFACE_BGO2->SetType(dielectric_dielectric);
+
+                panel_OPTSURFACE_BGO2->SetFinish(polishedbackpainted);
+                panel_OPTSURFACE_BGO2->SetSigmaAlpha(1.3*degree);
+                
+                std::vector<G4double> OPTSURFACE_Energy_BGO2 = {1.547868 *eV, 1.569420 *eV, 1.593627 *eV, 1.618593 *eV, 1.631371 *eV, 1.657543 *eV, 1.696090 *eV, 1.748719 *eV, 1.789094 *eV, 1.850510 *eV, 1.919260 *eV, 1.990116 *eV, 2.066403 *eV, 2.137659 *eV, 2.206125 *eV, 2.270773 *eV, 2.352641 *eV, 2.455133 *eV, 2.561657 *eV, 2.637962 *eV, 2.736958 *eV, 2.843674 *eV, 3.002039 *eV, 3.107373 *eV, 3.162862 *eV, 3.195469 *eV, 3.212026 *eV, 3.220369 *eV, 3.245660 *eV, 3.254178 *eV, 3.280005 *eV, 3.315086 *eV, 3.415543 *eV, 3.492513 *eV, 3.573032 *eV, 3.657351 *eV, 3.745746 *eV, 3.948541 *eV, 4.146629 *eV, 4.381067 *eV, 4.558243 *eV, 4.714228 *eV, 4.959368 *eV};
+                std::vector<G4double> OPTSURFACE_refl_BGO2 = {0.999, 0.999, 0.996, 0.994, 0.985, 0.988, 0.990, 0.985, 0.987, 0.978, 0.970, 0.973, 0.975, 0.976, 0.982, 0.987, 0.990, 0.993, 0.997, 0.996, 0.984, 0.990, 0.985, 0.953, 0.870, 0.762, 0.657, 0.533, 0.392, 0.274, 0.157, 0.124, 0.124, 0.102, 0.0991, 0.0902, 0.0873, 0.0710, 0.0385, 0.0592, 0.0843, 0.123, 0.149}; // Janecek 2012
+                std::vector<G4double> OPTSURFACE_SPECULARLOBECONSTANT_BGO2 = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+                std::vector<G4double> OPTSURFACE_SPECULARSPIKECONSTANT_BGO2 = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+                std::vector<G4double> OPTSURFACE_BACKSCATTERCONSTANT_BGO2 = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+                std::vector<G4double> OPTSURFACE_RIND_BGO2 = { 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293};
+            
+                panel_OPTSURFACE_MPT_BGO2->AddProperty("REFLECTIVITY", OPTSURFACE_Energy_BGO2, OPTSURFACE_refl_BGO2);
+                panel_OPTSURFACE_MPT_BGO2->AddProperty("SPECULARLOBECONSTANT", OPTSURFACE_Energy_BGO2, OPTSURFACE_SPECULARLOBECONSTANT_BGO2);
+                panel_OPTSURFACE_MPT_BGO2->AddProperty("SPECULARSPIKECONSTANT", OPTSURFACE_Energy_BGO2, OPTSURFACE_SPECULARSPIKECONSTANT_BGO2);
+                panel_OPTSURFACE_MPT_BGO2->AddProperty("BACKSCATTERCONSTANT", OPTSURFACE_Energy_BGO2, OPTSURFACE_BACKSCATTERCONSTANT_BGO2);
+                panel_OPTSURFACE_MPT_BGO2->AddProperty("RINDEX", OPTSURFACE_Energy_BGO2, OPTSURFACE_RIND_BGO2);
+                panel_OPTSURFACE_MPT_BGO2->DumpTable();
+            }
+
+            if (setReflSurfaceType == 8) {
+                panel_OPTSURFACE_BGO2->SetModel(unified);
+                panel_OPTSURFACE_BGO2->SetType(dielectric_dielectric);
+
+                panel_OPTSURFACE_BGO2->SetFinish(polishedbackpainted);
+                panel_OPTSURFACE_BGO2->SetSigmaAlpha(2*degree);
+                
+                std::vector<G4double> OPTSURFACE_Energy_BGO2 = {1.547868 *eV, 1.569420 *eV, 1.593627 *eV, 1.618593 *eV, 1.631371 *eV, 1.657543 *eV, 1.696090 *eV, 1.748719 *eV, 1.789094 *eV, 1.850510 *eV, 1.919260 *eV, 1.990116 *eV, 2.066403 *eV, 2.137659 *eV, 2.206125 *eV, 2.270773 *eV, 2.352641 *eV, 2.455133 *eV, 2.561657 *eV, 2.637962 *eV, 2.736958 *eV, 2.843674 *eV, 3.002039 *eV, 3.107373 *eV, 3.162862 *eV, 3.195469 *eV, 3.212026 *eV, 3.220369 *eV, 3.245660 *eV, 3.254178 *eV, 3.280005 *eV, 3.315086 *eV, 3.415543 *eV, 3.492513 *eV, 3.573032 *eV, 3.657351 *eV, 3.745746 *eV, 3.948541 *eV, 4.146629 *eV, 4.381067 *eV, 4.558243 *eV, 4.714228 *eV, 4.959368 *eV};
+                std::vector<G4double> OPTSURFACE_refl_BGO2 = {0.999, 0.999, 0.996, 0.994, 0.985, 0.988, 0.990, 0.985, 0.987, 0.978, 0.970, 0.973, 0.975, 0.976, 0.982, 0.987, 0.990, 0.993, 0.997, 0.996, 0.984, 0.990, 0.985, 0.953, 0.870, 0.762, 0.657, 0.533, 0.392, 0.274, 0.157, 0.124, 0.124, 0.102, 0.0991, 0.0902, 0.0873, 0.0710, 0.0385, 0.0592, 0.0843, 0.123, 0.149}; // Janecek 2012
+                std::vector<G4double> OPTSURFACE_SPECULARLOBECONSTANT_BGO2 = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+                std::vector<G4double> OPTSURFACE_SPECULARSPIKECONSTANT_BGO2 = { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 };
+                std::vector<G4double> OPTSURFACE_BACKSCATTERCONSTANT_BGO2 = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+                std::vector<G4double> OPTSURFACE_RIND_BGO2 = { 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293};
+            
+                panel_OPTSURFACE_MPT_BGO2->AddProperty("REFLECTIVITY", OPTSURFACE_Energy_BGO2, OPTSURFACE_refl_BGO2);
+                panel_OPTSURFACE_MPT_BGO2->AddProperty("SPECULARLOBECONSTANT", OPTSURFACE_Energy_BGO2, OPTSURFACE_SPECULARLOBECONSTANT_BGO2);
+                panel_OPTSURFACE_MPT_BGO2->AddProperty("SPECULARSPIKECONSTANT", OPTSURFACE_Energy_BGO2, OPTSURFACE_SPECULARSPIKECONSTANT_BGO2);
+                panel_OPTSURFACE_MPT_BGO2->AddProperty("BACKSCATTERCONSTANT", OPTSURFACE_Energy_BGO2, OPTSURFACE_BACKSCATTERCONSTANT_BGO2);
+                panel_OPTSURFACE_MPT_BGO2->AddProperty("RINDEX", OPTSURFACE_Energy_BGO2, OPTSURFACE_RIND_BGO2);
+                panel_OPTSURFACE_MPT_BGO2->DumpTable();
+            }
+            if (setReflSurfaceType == 9) {
+                panel_OPTSURFACE_BGO2->SetModel(unified);
+                panel_OPTSURFACE_BGO2->SetType(dielectric_dielectric);
+
+                panel_OPTSURFACE_BGO2->SetFinish(polishedbackpainted);
+                panel_OPTSURFACE_BGO2->SetSigmaAlpha(1.3*degree);
+                
+                std::vector<G4double> OPTSURFACE_Energy_BGO2 = {1.547868 *eV, 1.569420 *eV, 1.593627 *eV, 1.618593 *eV, 1.631371 *eV, 1.657543 *eV, 1.696090 *eV, 1.748719 *eV, 1.789094 *eV, 1.850510 *eV, 1.919260 *eV, 1.990116 *eV, 2.066403 *eV, 2.137659 *eV, 2.206125 *eV, 2.270773 *eV, 2.352641 *eV, 2.455133 *eV, 2.561657 *eV, 2.637962 *eV, 2.736958 *eV, 2.843674 *eV, 3.002039 *eV, 3.107373 *eV, 3.162862 *eV, 3.195469 *eV, 3.212026 *eV, 3.220369 *eV, 3.245660 *eV, 3.254178 *eV, 3.280005 *eV, 3.315086 *eV, 3.415543 *eV, 3.492513 *eV, 3.573032 *eV, 3.657351 *eV, 3.745746 *eV, 3.948541 *eV, 4.146629 *eV, 4.381067 *eV, 4.558243 *eV, 4.714228 *eV, 4.959368 *eV};
+                std::vector<G4double> OPTSURFACE_refl_BGO2 = {0.999, 0.999, 0.996, 0.994, 0.985, 0.988, 0.990, 0.985, 0.987, 0.978, 0.970, 0.973, 0.975, 0.976, 0.982, 0.987, 0.990, 0.993, 0.997, 0.996, 0.984, 0.990, 0.985, 0.953, 0.870, 0.762, 0.657, 0.533, 0.392, 0.274, 0.157, 0.124, 0.124, 0.102, 0.0991, 0.0902, 0.0873, 0.0710, 0.0385, 0.0592, 0.0843, 0.123, 0.149}; // Janecek 2012
+                std::vector<G4double> OPTSURFACE_SPECULARLOBECONSTANT_BGO2 = { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 };
+                std::vector<G4double> OPTSURFACE_SPECULARSPIKECONSTANT_BGO2 = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+                std::vector<G4double> OPTSURFACE_BACKSCATTERCONSTANT_BGO2 = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+                std::vector<G4double> OPTSURFACE_RIND_BGO2 = { 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293};
+            
+                panel_OPTSURFACE_MPT_BGO2->AddProperty("REFLECTIVITY", OPTSURFACE_Energy_BGO2, OPTSURFACE_refl_BGO2);
+                panel_OPTSURFACE_MPT_BGO2->AddProperty("SPECULARLOBECONSTANT", OPTSURFACE_Energy_BGO2, OPTSURFACE_SPECULARLOBECONSTANT_BGO2);
+                panel_OPTSURFACE_MPT_BGO2->AddProperty("SPECULARSPIKECONSTANT", OPTSURFACE_Energy_BGO2, OPTSURFACE_SPECULARSPIKECONSTANT_BGO2);
+                panel_OPTSURFACE_MPT_BGO2->AddProperty("BACKSCATTERCONSTANT", OPTSURFACE_Energy_BGO2, OPTSURFACE_BACKSCATTERCONSTANT_BGO2);
+                panel_OPTSURFACE_MPT_BGO2->AddProperty("RINDEX", OPTSURFACE_Energy_BGO2, OPTSURFACE_RIND_BGO2);
+                panel_OPTSURFACE_MPT_BGO2->DumpTable();
+            }
             panel_OPTSURFACE_BGO2->SetMaterialPropertiesTable(panel_OPTSURFACE_MPT_BGO2);
 
             /* BGO2 -> Tetratex (SiPM face) */
@@ -1791,6 +2154,62 @@ G4VPhysicalVolume* GeometryCOSI_EMXwall::ConstructGeometry(G4VPhysicalVolume* Wo
 
             G4MaterialPropertiesTable* panel_OPTSURFACE2_MPT_BGO2 = new G4MaterialPropertiesTable();
             
+            if (setReflSurface2Type == 1) {
+                panel_OPTSURFACE2_BGO2->SetModel(unified);
+                panel_OPTSURFACE2_BGO2->SetType(dielectric_dielectric);
+
+                panel_OPTSURFACE2_BGO2->SetFinish(polishedbackpainted);
+                panel_OPTSURFACE2_BGO2->SetSigmaAlpha(1.3*degree);
+                
+                std::vector<G4double> OPTSURFACE2_Energy_BGO2 = {1.573404*eV, 1.637836*eV, 1.736473*eV, 1.881399*eV, 2.029201*eV, 2.270773*eV, 2.610194*eV, 2.917275*eV, 3.195469*eV, 3.350924*eV, 3.562764*eV, 3.838520*eV, 4.146629*eV, 4.320007*eV, 4.524971*eV, 4.696371*eV, 4.939609*eV};
+                std::vector<G4double> OPTSURFACE2_refl_BGO2 = {0.870, 0.881, 0.891, 0.906, 0.916, 0.928, 0.937, 0.946, 0.954, 0.957, 0.958, 0.963, 0.964, 0.969, 0.969, 0.963, 0.972}; // Janecek 2012
+                std::vector<G4double> OPTSURFACE2_SPECULARLOBECONSTANT_BGO2 = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+                std::vector<G4double> OPTSURFACE2_SPECULARSPIKECONSTANT_BGO2 = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+                std::vector<G4double> OPTSURFACE2_BACKSCATTERCONSTANT_BGO2 = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+                std::vector<G4double> OPTSURFACE2_RIND_BGO2 = { 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293};
+            
+                panel_OPTSURFACE2_MPT_BGO2->AddProperty("REFLECTIVITY", OPTSURFACE2_Energy_BGO2, OPTSURFACE2_refl_BGO2);
+                panel_OPTSURFACE2_MPT_BGO2->AddProperty("SPECULARLOBECONSTANT", OPTSURFACE2_Energy_BGO2, OPTSURFACE2_SPECULARLOBECONSTANT_BGO2);
+                panel_OPTSURFACE2_MPT_BGO2->AddProperty("SPECULARSPIKECONSTANT", OPTSURFACE2_Energy_BGO2, OPTSURFACE2_SPECULARSPIKECONSTANT_BGO2);
+                panel_OPTSURFACE2_MPT_BGO2->AddProperty("BACKSCATTERCONSTANT", OPTSURFACE2_Energy_BGO2, OPTSURFACE2_BACKSCATTERCONSTANT_BGO2);
+                panel_OPTSURFACE2_MPT_BGO2->AddProperty("RINDEX", OPTSURFACE2_Energy_BGO2, OPTSURFACE2_RIND_BGO2);
+                panel_OPTSURFACE2_MPT_BGO2->DumpTable();
+            }
+
+            if (setReflSurface2Type == 2) {
+                panel_OPTSURFACE2_BGO2->SetModel(unified);
+                panel_OPTSURFACE2_BGO2->SetType(dielectric_dielectric);
+
+                panel_OPTSURFACE2_BGO2->SetFinish(polishedbackpainted);
+                panel_OPTSURFACE2_BGO2->SetSigmaAlpha(1.3*degree);
+                
+                std::vector<G4double> OPTSURFACE2_Energy_BGO2 = {1.573404*eV, 1.637836*eV, 1.736473*eV, 1.881399*eV, 2.029201*eV, 2.270773*eV, 2.610194*eV, 2.917275*eV, 3.195469*eV, 3.350924*eV, 3.562764*eV, 3.838520*eV, 4.146629*eV, 4.320007*eV, 4.524971*eV, 4.696371*eV, 4.939609*eV};
+                std::vector<G4double> OPTSURFACE2_refl_BGO2 = {0.870, 0.881, 0.891, 0.906, 0.916, 0.928, 0.937, 0.946, 0.954, 0.957, 0.958, 0.963, 0.964, 0.969, 0.969, 0.963, 0.972}; // Janecek 2012
+                std::vector<G4double> OPTSURFACE2_SPECULARLOBECONSTANT_BGO2 = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+                std::vector<G4double> OPTSURFACE2_SPECULARSPIKECONSTANT_BGO2 = { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 };
+                std::vector<G4double> OPTSURFACE2_BACKSCATTERCONSTANT_BGO2 = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+                std::vector<G4double> OPTSURFACE2_RIND_BGO2 = { 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293};
+            
+                panel_OPTSURFACE2_MPT_BGO2->AddProperty("REFLECTIVITY", OPTSURFACE2_Energy_BGO2, OPTSURFACE2_refl_BGO2);
+                panel_OPTSURFACE2_MPT_BGO2->AddProperty("SPECULARLOBECONSTANT", OPTSURFACE2_Energy_BGO2, OPTSURFACE2_SPECULARLOBECONSTANT_BGO2);
+                panel_OPTSURFACE2_MPT_BGO2->AddProperty("SPECULARSPIKECONSTANT", OPTSURFACE2_Energy_BGO2, OPTSURFACE2_SPECULARSPIKECONSTANT_BGO2);
+                panel_OPTSURFACE2_MPT_BGO2->AddProperty("BACKSCATTERCONSTANT", OPTSURFACE2_Energy_BGO2, OPTSURFACE2_BACKSCATTERCONSTANT_BGO2);
+                panel_OPTSURFACE2_MPT_BGO2->AddProperty("RINDEX", OPTSURFACE2_Energy_BGO2, OPTSURFACE2_RIND_BGO2);
+                panel_OPTSURFACE2_MPT_BGO2->DumpTable();
+            }
+            if (setReflSurface2Type == 3) {
+                panel_OPTSURFACE2_BGO2->SetModel(unified);
+                panel_OPTSURFACE2_BGO2->SetType(dielectric_dielectric);
+
+                panel_OPTSURFACE2_BGO2->SetFinish(groundfrontpainted);
+                
+                std::vector<G4double> OPTSURFACE2_Energy_BGO2 = {1.573404*eV, 1.637836*eV, 1.736473*eV, 1.881399*eV, 2.029201*eV, 2.270773*eV, 2.610194*eV, 2.917275*eV, 3.195469*eV, 3.350924*eV, 3.562764*eV, 3.838520*eV, 4.146629*eV, 4.320007*eV, 4.524971*eV, 4.696371*eV, 4.939609*eV};
+                std::vector<G4double> OPTSURFACE2_refl_BGO2 = {0.870, 0.881, 0.891, 0.906, 0.916, 0.928, 0.937, 0.946, 0.954, 0.957, 0.958, 0.963, 0.964, 0.969, 0.969, 0.963, 0.972}; // Janecek 2012
+
+            
+                panel_OPTSURFACE2_MPT_BGO2->AddProperty("REFLECTIVITY", OPTSURFACE2_Energy_BGO2, OPTSURFACE2_refl_BGO2);
+                panel_OPTSURFACE2_MPT_BGO2->DumpTable();
+            }
             if (setReflSurface2Type == 4) {
                 panel_OPTSURFACE2_BGO2->SetModel(unified);
                 panel_OPTSURFACE2_BGO2->SetType(dielectric_dielectric);
@@ -1910,6 +2329,153 @@ G4VPhysicalVolume* GeometryCOSI_EMXwall::ConstructGeometry(G4VPhysicalVolume* Wo
                 panel_OPTSURFACE_MPT_BGO3->AddProperty("RINDEX", OPTSURFACE_Energy_BGO3, OPTSURFACE_RIND_BGO3);
                 panel_OPTSURFACE_MPT_BGO3->DumpTable();
             }
+
+            if (setReflSurfaceType == 2) {
+                panel_OPTSURFACE_BGO3->SetModel(LUT);
+                panel_OPTSURFACE_BGO3->SetType(dielectric_LUT);
+
+                panel_OPTSURFACE_BGO3->SetFinish(polishedvm2000air);
+
+                std::vector<G4double> OPTSURFACE_Energy_BGO3 = {1.547868 *eV, 1.569420 *eV, 1.593627 *eV, 1.618593 *eV, 1.631371 *eV, 1.657543 *eV, 1.696090 *eV, 1.748719 *eV, 1.789094 *eV, 1.850510 *eV, 1.919260 *eV, 1.990116 *eV, 2.066403 *eV, 2.137659 *eV, 2.206125 *eV, 2.270773 *eV, 2.352641 *eV, 2.455133 *eV, 2.561657 *eV, 2.637962 *eV, 2.736958 *eV, 2.843674 *eV, 3.002039 *eV, 3.107373 *eV, 3.162862 *eV, 3.195469 *eV, 3.212026 *eV, 3.220369 *eV, 3.245660 *eV, 3.254178 *eV, 3.280005 *eV, 3.315086 *eV, 3.415543 *eV, 3.492513 *eV, 3.573032 *eV, 3.657351 *eV, 3.745746 *eV, 3.948541 *eV, 4.146629 *eV, 4.381067 *eV, 4.558243 *eV, 4.714228 *eV, 4.959368 *eV};
+                std::vector<G4double> OPTSURFACE_refl_BGO3 = {0.999, 0.999, 0.996, 0.994, 0.985, 0.988, 0.990, 0.985, 0.987, 0.978, 0.970, 0.973, 0.975, 0.976, 0.982, 0.987, 0.990, 0.993, 0.997, 0.996, 0.984, 0.990, 0.985, 0.953, 0.870, 0.762, 0.657, 0.533, 0.392, 0.274, 0.157, 0.124, 0.124, 0.102, 0.0991, 0.0902, 0.0873, 0.0710, 0.0385, 0.0592, 0.0843, 0.123, 0.149}; // Janecek 2012
+
+                panel_OPTSURFACE_MPT_BGO3->AddProperty("REFLECTIVITY", OPTSURFACE_Energy_BGO3, OPTSURFACE_refl_BGO3);
+                panel_OPTSURFACE_MPT_BGO3->DumpTable();
+            }
+
+            if (setReflSurfaceType == 3) {
+                panel_OPTSURFACE_BGO3->SetModel(LUT);
+                panel_OPTSURFACE_BGO3->SetType(dielectric_LUT);
+
+                panel_OPTSURFACE_BGO3->SetFinish(etchedvm2000air);
+
+                std::vector<G4double> OPTSURFACE_Energy_BGO3 = {1.547868 *eV, 1.569420 *eV, 1.593627 *eV, 1.618593 *eV, 1.631371 *eV, 1.657543 *eV, 1.696090 *eV, 1.748719 *eV, 1.789094 *eV, 1.850510 *eV, 1.919260 *eV, 1.990116 *eV, 2.066403 *eV, 2.137659 *eV, 2.206125 *eV, 2.270773 *eV, 2.352641 *eV, 2.455133 *eV, 2.561657 *eV, 2.637962 *eV, 2.736958 *eV, 2.843674 *eV, 3.002039 *eV, 3.107373 *eV, 3.162862 *eV, 3.195469 *eV, 3.212026 *eV, 3.220369 *eV, 3.245660 *eV, 3.254178 *eV, 3.280005 *eV, 3.315086 *eV, 3.415543 *eV, 3.492513 *eV, 3.573032 *eV, 3.657351 *eV, 3.745746 *eV, 3.948541 *eV, 4.146629 *eV, 4.381067 *eV, 4.558243 *eV, 4.714228 *eV, 4.959368 *eV};
+                std::vector<G4double> OPTSURFACE_refl_BGO3 = {0.999, 0.999, 0.996, 0.994, 0.985, 0.988, 0.990, 0.985, 0.987, 0.978, 0.970, 0.973, 0.975, 0.976, 0.982, 0.987, 0.990, 0.993, 0.997, 0.996, 0.984, 0.990, 0.985, 0.953, 0.870, 0.762, 0.657, 0.533, 0.392, 0.274, 0.157, 0.124, 0.124, 0.102, 0.0991, 0.0902, 0.0873, 0.0710, 0.0385, 0.0592, 0.0843, 0.123, 0.149}; // Janecek 2012
+
+                panel_OPTSURFACE_MPT_BGO3->AddProperty("REFLECTIVITY", OPTSURFACE_Energy_BGO3, OPTSURFACE_refl_BGO3);
+                panel_OPTSURFACE_MPT_BGO3->DumpTable();
+            }
+
+            if (setReflSurfaceType == 4) {
+                panel_OPTSURFACE_BGO3->SetModel(LUT);
+                panel_OPTSURFACE_BGO3->SetType(dielectric_LUT);
+
+                panel_OPTSURFACE_BGO3->SetFinish(groundvm2000air);
+
+                std::vector<G4double> OPTSURFACE_Energy_BGO3 = {1.547868 *eV, 1.569420 *eV, 1.593627 *eV, 1.618593 *eV, 1.631371 *eV, 1.657543 *eV, 1.696090 *eV, 1.748719 *eV, 1.789094 *eV, 1.850510 *eV, 1.919260 *eV, 1.990116 *eV, 2.066403 *eV, 2.137659 *eV, 2.206125 *eV, 2.270773 *eV, 2.352641 *eV, 2.455133 *eV, 2.561657 *eV, 2.637962 *eV, 2.736958 *eV, 2.843674 *eV, 3.002039 *eV, 3.107373 *eV, 3.162862 *eV, 3.195469 *eV, 3.212026 *eV, 3.220369 *eV, 3.245660 *eV, 3.254178 *eV, 3.280005 *eV, 3.315086 *eV, 3.415543 *eV, 3.492513 *eV, 3.573032 *eV, 3.657351 *eV, 3.745746 *eV, 3.948541 *eV, 4.146629 *eV, 4.381067 *eV, 4.558243 *eV, 4.714228 *eV, 4.959368 *eV};
+                std::vector<G4double> OPTSURFACE_refl_BGO3 = {0.999, 0.999, 0.996, 0.994, 0.985, 0.988, 0.990, 0.985, 0.987, 0.978, 0.970, 0.973, 0.975, 0.976, 0.982, 0.987, 0.990, 0.993, 0.997, 0.996, 0.984, 0.990, 0.985, 0.953, 0.870, 0.762, 0.657, 0.533, 0.392, 0.274, 0.157, 0.124, 0.124, 0.102, 0.0991, 0.0902, 0.0873, 0.0710, 0.0385, 0.0592, 0.0843, 0.123, 0.149}; // Janecek 2012
+
+                panel_OPTSURFACE_MPT_BGO3->AddProperty("REFLECTIVITY", OPTSURFACE_Energy_BGO3, OPTSURFACE_refl_BGO3);
+                panel_OPTSURFACE_MPT_BGO3->DumpTable();
+            }
+
+            if (setReflSurfaceType == 5) {
+                panel_OPTSURFACE_BGO3->SetModel(unified);
+                panel_OPTSURFACE_BGO3->SetType(dielectric_dielectric);
+
+                panel_OPTSURFACE_BGO3->SetFinish(polishedbackpainted);
+                panel_OPTSURFACE_BGO3->SetSigmaAlpha(1.3*degree);
+                
+                std::vector<G4double> OPTSURFACE_Energy_BGO3 = {1.*eV, 3.*eV, 5.*eV, 7.*eV, 10.*eV};
+                std::vector<G4double> OPTSURFACE_refl_BGO3 = {0.999, 0.999, 0.999, 0.999, 0.999};
+                std::vector<G4double> OPTSURFACE_SPECULARLOBECONSTANT_BGO3 = { 0, 0, 0, 0, 0};
+                std::vector<G4double> OPTSURFACE_SPECULARSPIKECONSTANT_BGO3 = { 1, 1, 1, 1, 1 };
+                std::vector<G4double> OPTSURFACE_BACKSCATTERCONSTANT_BGO3 = { 0, 0, 0, 0, 0};
+                std::vector<G4double> OPTSURFACE_RIND_BGO3 = { 1.00293, 1.00293, 1.00293, 1.00293, 1.00293};
+            
+                panel_OPTSURFACE_MPT_BGO3->AddProperty("REFLECTIVITY", OPTSURFACE_Energy_BGO3, OPTSURFACE_refl_BGO3);
+                panel_OPTSURFACE_MPT_BGO3->AddProperty("SPECULARLOBECONSTANT", OPTSURFACE_Energy_BGO3, OPTSURFACE_SPECULARLOBECONSTANT_BGO3);
+                panel_OPTSURFACE_MPT_BGO3->AddProperty("SPECULARSPIKECONSTANT", OPTSURFACE_Energy_BGO3, OPTSURFACE_SPECULARSPIKECONSTANT_BGO3);
+                panel_OPTSURFACE_MPT_BGO3->AddProperty("BACKSCATTERCONSTANT", OPTSURFACE_Energy_BGO3, OPTSURFACE_BACKSCATTERCONSTANT_BGO3);
+                panel_OPTSURFACE_MPT_BGO3->AddProperty("RINDEX", OPTSURFACE_Energy_BGO3, OPTSURFACE_RIND_BGO3);
+                panel_OPTSURFACE_MPT_BGO3->DumpTable();
+            }
+
+            if (setReflSurfaceType == 6) {
+                panel_OPTSURFACE_BGO3->SetModel(unified);
+                panel_OPTSURFACE_BGO3->SetType(dielectric_metal);
+
+                panel_OPTSURFACE_BGO3->SetFinish(polished);
+                
+                std::vector<G4double> OPTSURFACE_Energy_BGO3 = {1.547868 *eV, 1.569420 *eV, 1.593627 *eV, 1.618593 *eV, 1.631371 *eV, 1.657543 *eV, 1.696090 *eV, 1.748719 *eV, 1.789094 *eV, 1.850510 *eV, 1.919260 *eV, 1.990116 *eV, 2.066403 *eV, 2.137659 *eV, 2.206125 *eV, 2.270773 *eV, 2.352641 *eV, 2.455133 *eV, 2.561657 *eV, 2.637962 *eV, 2.736958 *eV, 2.843674 *eV, 3.002039 *eV, 3.107373 *eV, 3.162862 *eV, 3.195469 *eV, 3.212026 *eV, 3.220369 *eV, 3.245660 *eV, 3.254178 *eV, 3.280005 *eV, 3.315086 *eV, 3.415543 *eV, 3.492513 *eV, 3.573032 *eV, 3.657351 *eV, 3.745746 *eV, 3.948541 *eV, 4.146629 *eV, 4.381067 *eV, 4.558243 *eV, 4.714228 *eV, 4.959368 *eV};
+                std::vector<G4double> OPTSURFACE_refl_BGO3 = {0.999, 0.999, 0.996, 0.994, 0.985, 0.988, 0.990, 0.985, 0.987, 0.978, 0.970, 0.973, 0.975, 0.976, 0.982, 0.987, 0.990, 0.993, 0.997, 0.996, 0.984, 0.990, 0.985, 0.953, 0.870, 0.762, 0.657, 0.533, 0.392, 0.274, 0.157, 0.124, 0.124, 0.102, 0.0991, 0.0902, 0.0873, 0.0710, 0.0385, 0.0592, 0.0843, 0.123, 0.149}; // Janecek 2012
+                std::vector<G4double> OPTSURFACE_SPECULARLOBECONSTANT_BGO3 = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+                std::vector<G4double> OPTSURFACE_SPECULARSPIKECONSTANT_BGO3 = { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 };
+                std::vector<G4double> OPTSURFACE_BACKSCATTERCONSTANT_BGO3 = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+                std::vector<G4double> OPTSURFACE_RIND_BGO3 = { 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293};
+            
+                panel_OPTSURFACE_MPT_BGO3->AddProperty("REFLECTIVITY", OPTSURFACE_Energy_BGO3, OPTSURFACE_refl_BGO3);
+                panel_OPTSURFACE_MPT_BGO3->AddProperty("SPECULARLOBECONSTANT", OPTSURFACE_Energy_BGO3, OPTSURFACE_SPECULARLOBECONSTANT_BGO3);
+                panel_OPTSURFACE_MPT_BGO3->AddProperty("SPECULARSPIKECONSTANT", OPTSURFACE_Energy_BGO3, OPTSURFACE_SPECULARSPIKECONSTANT_BGO3);
+                panel_OPTSURFACE_MPT_BGO3->AddProperty("BACKSCATTERCONSTANT", OPTSURFACE_Energy_BGO3, OPTSURFACE_BACKSCATTERCONSTANT_BGO3);
+                panel_OPTSURFACE_MPT_BGO3->AddProperty("RINDEX", OPTSURFACE_Energy_BGO3, OPTSURFACE_RIND_BGO3);
+                panel_OPTSURFACE_MPT_BGO3->DumpTable();
+            }
+
+            if (setReflSurfaceType == 7) {
+                panel_OPTSURFACE_BGO3->SetModel(unified);
+                panel_OPTSURFACE_BGO3->SetType(dielectric_dielectric);
+
+                panel_OPTSURFACE_BGO3->SetFinish(polishedbackpainted);
+                panel_OPTSURFACE_BGO3->SetSigmaAlpha(1.3*degree);
+                
+                std::vector<G4double> OPTSURFACE_Energy_BGO3 = {1.547868 *eV, 1.569420 *eV, 1.593627 *eV, 1.618593 *eV, 1.631371 *eV, 1.657543 *eV, 1.696090 *eV, 1.748719 *eV, 1.789094 *eV, 1.850510 *eV, 1.919260 *eV, 1.990116 *eV, 2.066403 *eV, 2.137659 *eV, 2.206125 *eV, 2.270773 *eV, 2.352641 *eV, 2.455133 *eV, 2.561657 *eV, 2.637962 *eV, 2.736958 *eV, 2.843674 *eV, 3.002039 *eV, 3.107373 *eV, 3.162862 *eV, 3.195469 *eV, 3.212026 *eV, 3.220369 *eV, 3.245660 *eV, 3.254178 *eV, 3.280005 *eV, 3.315086 *eV, 3.415543 *eV, 3.492513 *eV, 3.573032 *eV, 3.657351 *eV, 3.745746 *eV, 3.948541 *eV, 4.146629 *eV, 4.381067 *eV, 4.558243 *eV, 4.714228 *eV, 4.959368 *eV};
+                std::vector<G4double> OPTSURFACE_refl_BGO3 = {0.999, 0.999, 0.996, 0.994, 0.985, 0.988, 0.990, 0.985, 0.987, 0.978, 0.970, 0.973, 0.975, 0.976, 0.982, 0.987, 0.990, 0.993, 0.997, 0.996, 0.984, 0.990, 0.985, 0.953, 0.870, 0.762, 0.657, 0.533, 0.392, 0.274, 0.157, 0.124, 0.124, 0.102, 0.0991, 0.0902, 0.0873, 0.0710, 0.0385, 0.0592, 0.0843, 0.123, 0.149}; // Janecek 2012
+                std::vector<G4double> OPTSURFACE_SPECULARLOBECONSTANT_BGO3 = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+                std::vector<G4double> OPTSURFACE_SPECULARSPIKECONSTANT_BGO3 = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+                std::vector<G4double> OPTSURFACE_BACKSCATTERCONSTANT_BGO3 = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+                std::vector<G4double> OPTSURFACE_RIND_BGO3 = { 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293};
+            
+                panel_OPTSURFACE_MPT_BGO3->AddProperty("REFLECTIVITY", OPTSURFACE_Energy_BGO3, OPTSURFACE_refl_BGO3);
+                panel_OPTSURFACE_MPT_BGO3->AddProperty("SPECULARLOBECONSTANT", OPTSURFACE_Energy_BGO3, OPTSURFACE_SPECULARLOBECONSTANT_BGO3);
+                panel_OPTSURFACE_MPT_BGO3->AddProperty("SPECULARSPIKECONSTANT", OPTSURFACE_Energy_BGO3, OPTSURFACE_SPECULARSPIKECONSTANT_BGO3);
+                panel_OPTSURFACE_MPT_BGO3->AddProperty("BACKSCATTERCONSTANT", OPTSURFACE_Energy_BGO3, OPTSURFACE_BACKSCATTERCONSTANT_BGO3);
+                panel_OPTSURFACE_MPT_BGO3->AddProperty("RINDEX", OPTSURFACE_Energy_BGO3, OPTSURFACE_RIND_BGO3);
+                panel_OPTSURFACE_MPT_BGO3->DumpTable();
+            }
+
+            if (setReflSurfaceType == 8) {
+                panel_OPTSURFACE_BGO3->SetModel(unified);
+                panel_OPTSURFACE_BGO3->SetType(dielectric_dielectric);
+
+                panel_OPTSURFACE_BGO3->SetFinish(polishedbackpainted);
+                panel_OPTSURFACE_BGO3->SetSigmaAlpha(2*degree);
+                
+                std::vector<G4double> OPTSURFACE_Energy_BGO3 = {1.547868 *eV, 1.569420 *eV, 1.593627 *eV, 1.618593 *eV, 1.631371 *eV, 1.657543 *eV, 1.696090 *eV, 1.748719 *eV, 1.789094 *eV, 1.850510 *eV, 1.919260 *eV, 1.990116 *eV, 2.066403 *eV, 2.137659 *eV, 2.206125 *eV, 2.270773 *eV, 2.352641 *eV, 2.455133 *eV, 2.561657 *eV, 2.637962 *eV, 2.736958 *eV, 2.843674 *eV, 3.002039 *eV, 3.107373 *eV, 3.162862 *eV, 3.195469 *eV, 3.212026 *eV, 3.220369 *eV, 3.245660 *eV, 3.254178 *eV, 3.280005 *eV, 3.315086 *eV, 3.415543 *eV, 3.492513 *eV, 3.573032 *eV, 3.657351 *eV, 3.745746 *eV, 3.948541 *eV, 4.146629 *eV, 4.381067 *eV, 4.558243 *eV, 4.714228 *eV, 4.959368 *eV};
+                std::vector<G4double> OPTSURFACE_refl_BGO3 = {0.999, 0.999, 0.996, 0.994, 0.985, 0.988, 0.990, 0.985, 0.987, 0.978, 0.970, 0.973, 0.975, 0.976, 0.982, 0.987, 0.990, 0.993, 0.997, 0.996, 0.984, 0.990, 0.985, 0.953, 0.870, 0.762, 0.657, 0.533, 0.392, 0.274, 0.157, 0.124, 0.124, 0.102, 0.0991, 0.0902, 0.0873, 0.0710, 0.0385, 0.0592, 0.0843, 0.123, 0.149}; // Janecek 2012
+                std::vector<G4double> OPTSURFACE_SPECULARLOBECONSTANT_BGO3 = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+                std::vector<G4double> OPTSURFACE_SPECULARSPIKECONSTANT_BGO3 = { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 };
+                std::vector<G4double> OPTSURFACE_BACKSCATTERCONSTANT_BGO3 = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+                std::vector<G4double> OPTSURFACE_RIND_BGO3 = { 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293};
+            
+                panel_OPTSURFACE_MPT_BGO3->AddProperty("REFLECTIVITY", OPTSURFACE_Energy_BGO3, OPTSURFACE_refl_BGO3);
+                panel_OPTSURFACE_MPT_BGO3->AddProperty("SPECULARLOBECONSTANT", OPTSURFACE_Energy_BGO3, OPTSURFACE_SPECULARLOBECONSTANT_BGO3);
+                panel_OPTSURFACE_MPT_BGO3->AddProperty("SPECULARSPIKECONSTANT", OPTSURFACE_Energy_BGO3, OPTSURFACE_SPECULARSPIKECONSTANT_BGO3);
+                panel_OPTSURFACE_MPT_BGO3->AddProperty("BACKSCATTERCONSTANT", OPTSURFACE_Energy_BGO3, OPTSURFACE_BACKSCATTERCONSTANT_BGO3);
+                panel_OPTSURFACE_MPT_BGO3->AddProperty("RINDEX", OPTSURFACE_Energy_BGO3, OPTSURFACE_RIND_BGO3);
+                panel_OPTSURFACE_MPT_BGO3->DumpTable();
+            }
+            if (setReflSurfaceType == 9) {
+                panel_OPTSURFACE_BGO3->SetModel(unified);
+                panel_OPTSURFACE_BGO3->SetType(dielectric_dielectric);
+
+                panel_OPTSURFACE_BGO3->SetFinish(polishedbackpainted);
+                panel_OPTSURFACE_BGO3->SetSigmaAlpha(1.3*degree);
+                
+                std::vector<G4double> OPTSURFACE_Energy_BGO3 = {1.547868 *eV, 1.569420 *eV, 1.593627 *eV, 1.618593 *eV, 1.631371 *eV, 1.657543 *eV, 1.696090 *eV, 1.748719 *eV, 1.789094 *eV, 1.850510 *eV, 1.919260 *eV, 1.990116 *eV, 2.066403 *eV, 2.137659 *eV, 2.206125 *eV, 2.270773 *eV, 2.352641 *eV, 2.455133 *eV, 2.561657 *eV, 2.637962 *eV, 2.736958 *eV, 2.843674 *eV, 3.002039 *eV, 3.107373 *eV, 3.162862 *eV, 3.195469 *eV, 3.212026 *eV, 3.220369 *eV, 3.245660 *eV, 3.254178 *eV, 3.280005 *eV, 3.315086 *eV, 3.415543 *eV, 3.492513 *eV, 3.573032 *eV, 3.657351 *eV, 3.745746 *eV, 3.948541 *eV, 4.146629 *eV, 4.381067 *eV, 4.558243 *eV, 4.714228 *eV, 4.959368 *eV};
+                std::vector<G4double> OPTSURFACE_refl_BGO3 = {0.999, 0.999, 0.996, 0.994, 0.985, 0.988, 0.990, 0.985, 0.987, 0.978, 0.970, 0.973, 0.975, 0.976, 0.982, 0.987, 0.990, 0.993, 0.997, 0.996, 0.984, 0.990, 0.985, 0.953, 0.870, 0.762, 0.657, 0.533, 0.392, 0.274, 0.157, 0.124, 0.124, 0.102, 0.0991, 0.0902, 0.0873, 0.0710, 0.0385, 0.0592, 0.0843, 0.123, 0.149}; // Janecek 2012
+                std::vector<G4double> OPTSURFACE_SPECULARLOBECONSTANT_BGO3 = { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 };
+                std::vector<G4double> OPTSURFACE_SPECULARSPIKECONSTANT_BGO3 = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+                std::vector<G4double> OPTSURFACE_BACKSCATTERCONSTANT_BGO3 = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+                std::vector<G4double> OPTSURFACE_RIND_BGO3 = { 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293};
+            
+                panel_OPTSURFACE_MPT_BGO3->AddProperty("REFLECTIVITY", OPTSURFACE_Energy_BGO3, OPTSURFACE_refl_BGO3);
+                panel_OPTSURFACE_MPT_BGO3->AddProperty("SPECULARLOBECONSTANT", OPTSURFACE_Energy_BGO3, OPTSURFACE_SPECULARLOBECONSTANT_BGO3);
+                panel_OPTSURFACE_MPT_BGO3->AddProperty("SPECULARSPIKECONSTANT", OPTSURFACE_Energy_BGO3, OPTSURFACE_SPECULARSPIKECONSTANT_BGO3);
+                panel_OPTSURFACE_MPT_BGO3->AddProperty("BACKSCATTERCONSTANT", OPTSURFACE_Energy_BGO3, OPTSURFACE_BACKSCATTERCONSTANT_BGO3);
+                panel_OPTSURFACE_MPT_BGO3->AddProperty("RINDEX", OPTSURFACE_Energy_BGO3, OPTSURFACE_RIND_BGO3);
+                panel_OPTSURFACE_MPT_BGO3->DumpTable();
+            }
             panel_OPTSURFACE_BGO3->SetMaterialPropertiesTable(panel_OPTSURFACE_MPT_BGO3);
 
             /* BGO3 -> Tetratex (SiPM face) */
@@ -1919,6 +2485,62 @@ G4VPhysicalVolume* GeometryCOSI_EMXwall::ConstructGeometry(G4VPhysicalVolume* Wo
 
             G4MaterialPropertiesTable* panel_OPTSURFACE2_MPT_BGO3 = new G4MaterialPropertiesTable();
             
+            if (setReflSurface2Type == 1) {
+                panel_OPTSURFACE2_BGO3->SetModel(unified);
+                panel_OPTSURFACE2_BGO3->SetType(dielectric_dielectric);
+
+                panel_OPTSURFACE2_BGO3->SetFinish(polishedbackpainted);
+                panel_OPTSURFACE2_BGO3->SetSigmaAlpha(1.3*degree);
+                
+                std::vector<G4double> OPTSURFACE2_Energy_BGO3 = {1.573404*eV, 1.637836*eV, 1.736473*eV, 1.881399*eV, 2.029201*eV, 2.270773*eV, 2.610194*eV, 2.917275*eV, 3.195469*eV, 3.350924*eV, 3.562764*eV, 3.838520*eV, 4.146629*eV, 4.320007*eV, 4.524971*eV, 4.696371*eV, 4.939609*eV};
+                std::vector<G4double> OPTSURFACE2_refl_BGO3 = {0.870, 0.881, 0.891, 0.906, 0.916, 0.928, 0.937, 0.946, 0.954, 0.957, 0.958, 0.963, 0.964, 0.969, 0.969, 0.963, 0.972}; // Janecek 2012
+                std::vector<G4double> OPTSURFACE2_SPECULARLOBECONSTANT_BGO3 = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+                std::vector<G4double> OPTSURFACE2_SPECULARSPIKECONSTANT_BGO3 = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+                std::vector<G4double> OPTSURFACE2_BACKSCATTERCONSTANT_BGO3 = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+                std::vector<G4double> OPTSURFACE2_RIND_BGO3 = { 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293};
+            
+                panel_OPTSURFACE2_MPT_BGO3->AddProperty("REFLECTIVITY", OPTSURFACE2_Energy_BGO3, OPTSURFACE2_refl_BGO3);
+                panel_OPTSURFACE2_MPT_BGO3->AddProperty("SPECULARLOBECONSTANT", OPTSURFACE2_Energy_BGO3, OPTSURFACE2_SPECULARLOBECONSTANT_BGO3);
+                panel_OPTSURFACE2_MPT_BGO3->AddProperty("SPECULARSPIKECONSTANT", OPTSURFACE2_Energy_BGO3, OPTSURFACE2_SPECULARSPIKECONSTANT_BGO3);
+                panel_OPTSURFACE2_MPT_BGO3->AddProperty("BACKSCATTERCONSTANT", OPTSURFACE2_Energy_BGO3, OPTSURFACE2_BACKSCATTERCONSTANT_BGO3);
+                panel_OPTSURFACE2_MPT_BGO3->AddProperty("RINDEX", OPTSURFACE2_Energy_BGO3, OPTSURFACE2_RIND_BGO3);
+                panel_OPTSURFACE2_MPT_BGO3->DumpTable();
+            }
+
+            if (setReflSurface2Type == 2) {
+                panel_OPTSURFACE2_BGO3->SetModel(unified);
+                panel_OPTSURFACE2_BGO3->SetType(dielectric_dielectric);
+
+                panel_OPTSURFACE2_BGO3->SetFinish(polishedbackpainted);
+                panel_OPTSURFACE2_BGO3->SetSigmaAlpha(1.3*degree);
+                
+                std::vector<G4double> OPTSURFACE2_Energy_BGO3 = {1.573404*eV, 1.637836*eV, 1.736473*eV, 1.881399*eV, 2.029201*eV, 2.270773*eV, 2.610194*eV, 2.917275*eV, 3.195469*eV, 3.350924*eV, 3.562764*eV, 3.838520*eV, 4.146629*eV, 4.320007*eV, 4.524971*eV, 4.696371*eV, 4.939609*eV};
+                std::vector<G4double> OPTSURFACE2_refl_BGO3 = {0.870, 0.881, 0.891, 0.906, 0.916, 0.928, 0.937, 0.946, 0.954, 0.957, 0.958, 0.963, 0.964, 0.969, 0.969, 0.963, 0.972}; // Janecek 2012
+                std::vector<G4double> OPTSURFACE2_SPECULARLOBECONSTANT_BGO3 = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+                std::vector<G4double> OPTSURFACE2_SPECULARSPIKECONSTANT_BGO3 = { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 };
+                std::vector<G4double> OPTSURFACE2_BACKSCATTERCONSTANT_BGO3 = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+                std::vector<G4double> OPTSURFACE2_RIND_BGO3 = { 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293};
+            
+                panel_OPTSURFACE2_MPT_BGO3->AddProperty("REFLECTIVITY", OPTSURFACE2_Energy_BGO3, OPTSURFACE2_refl_BGO3);
+                panel_OPTSURFACE2_MPT_BGO3->AddProperty("SPECULARLOBECONSTANT", OPTSURFACE2_Energy_BGO3, OPTSURFACE2_SPECULARLOBECONSTANT_BGO3);
+                panel_OPTSURFACE2_MPT_BGO3->AddProperty("SPECULARSPIKECONSTANT", OPTSURFACE2_Energy_BGO3, OPTSURFACE2_SPECULARSPIKECONSTANT_BGO3);
+                panel_OPTSURFACE2_MPT_BGO3->AddProperty("BACKSCATTERCONSTANT", OPTSURFACE2_Energy_BGO3, OPTSURFACE2_BACKSCATTERCONSTANT_BGO3);
+                panel_OPTSURFACE2_MPT_BGO3->AddProperty("RINDEX", OPTSURFACE2_Energy_BGO3, OPTSURFACE2_RIND_BGO3);
+                panel_OPTSURFACE2_MPT_BGO3->DumpTable();
+            }
+            if (setReflSurface2Type == 3) {
+                panel_OPTSURFACE2_BGO3->SetModel(unified);
+                panel_OPTSURFACE2_BGO3->SetType(dielectric_dielectric);
+
+                panel_OPTSURFACE2_BGO3->SetFinish(groundfrontpainted);
+                
+                std::vector<G4double> OPTSURFACE2_Energy_BGO3 = {1.573404*eV, 1.637836*eV, 1.736473*eV, 1.881399*eV, 2.029201*eV, 2.270773*eV, 2.610194*eV, 2.917275*eV, 3.195469*eV, 3.350924*eV, 3.562764*eV, 3.838520*eV, 4.146629*eV, 4.320007*eV, 4.524971*eV, 4.696371*eV, 4.939609*eV};
+                std::vector<G4double> OPTSURFACE2_refl_BGO3 = {0.870, 0.881, 0.891, 0.906, 0.916, 0.928, 0.937, 0.946, 0.954, 0.957, 0.958, 0.963, 0.964, 0.969, 0.969, 0.963, 0.972}; // Janecek 2012
+
+            
+                panel_OPTSURFACE2_MPT_BGO3->AddProperty("REFLECTIVITY", OPTSURFACE2_Energy_BGO3, OPTSURFACE2_refl_BGO3);
+                panel_OPTSURFACE2_MPT_BGO3->DumpTable();
+            }
             if (setReflSurface2Type == 4) {
                 panel_OPTSURFACE2_BGO3->SetModel(unified);
                 panel_OPTSURFACE2_BGO3->SetType(dielectric_dielectric);
@@ -2012,22 +2634,18 @@ G4VPhysicalVolume* GeometryCOSI_EMXwall::ConstructGeometry(G4VPhysicalVolume* Wo
 
         if (setGeomType == 9){
 
-            // Set up some dimensions (in mm)
-            // BGO
             G4double scintX = 198.;
             G4double scintY = 118.;
             G4double scintZ = 23.;
-            // Reflective layers: two layers of VM2000, one layer of Tetratex, one layer of Teflon PTFE
-            G4double refl1Thick = 0.065; // thickness of first VM200 reflective layer (Janecek 2012)
-            G4double refl11Thick = 0.065; // thickness of second VM2000 reflective layer (Janecek 2012)
-            G4double refl2Thick = 0.254; // thickness of Tetratex reflective layer (prototype description)
-            G4double refl3Thick = 0.0762; // thickness of Teflon relfective layer (https://www.mcmaster.com/8569K58/)
-            // Optical coupler
-            G4double optX = 18.; // optical coupler x length
-            G4double optY = 18.; // optical coupler y length
-            G4double optZ = 1.; // optical coupler thickness
+            G4double refl1Thick = 0.065; // Janecek 2012
+            G4double refl11Thick = 0.065;
+            G4double refl2Thick = 0.254; // prototype description
+            G4double refl3Thick = 0.0762; // (Teflon) https://www.mcmaster.com/8569K58/
 
-            // Half lengths of scintillator + reflective layers
+            G4double optX = 18.;
+            G4double optY = 18.;
+            G4double optZ = 1.;
+
             G4double xlen = scintX/2. + refl1Thick*2 + refl2Thick + refl3Thick;
             G4double ylen = scintY/2. + refl1Thick*2 + refl2Thick + refl3Thick;
             G4double zlen = scintZ/2. + refl1Thick*2 + refl2Thick + refl3Thick;
@@ -2117,6 +2735,48 @@ G4VPhysicalVolume* GeometryCOSI_EMXwall::ConstructGeometry(G4VPhysicalVolume* Wo
 
             if (table_sens == 1)
                 gm.AddXYZDetector(log_table);
+
+            if (is_floor == 1) {
+                G4int floor_copy = 150;
+                
+                G4double floorX = chamber_side;
+                G4double floorY = chamber_side;
+                G4double floorZ = 100.;
+
+                G4double floor_posX = table_posX;
+                G4double floor_posY = table_posY;
+                G4double floor_posZ = table_posZ - 1000.;
+
+                G4Box* solid_floor = new G4Box("solid_floor", floorX/2., floorY/2., floorZ/2.);
+                G4LogicalVolume* log_floor = new G4LogicalVolume(solid_floor, coll_mat, "log_floor");
+                G4VPhysicalVolume* phys_floor = new G4PVPlacement(0, G4ThreeVector(floor_posX, floor_posY, floor_posZ), log_floor, "floor", log_chamber, false, floor_copy, true);
+
+                G4VisAttributes* VisFloor = new G4VisAttributes(G4Colour::Black());
+                log_floor->SetVisAttributes(VisFloor);
+
+                if (floor_sens == 1)
+                    gm.AddXYZDetector(log_floor);   
+
+                G4int ceiling_copy = 151;
+                
+                G4double ceilingX = floorX;
+                G4double ceilingY = floorY;
+                G4double ceilingZ = floorZ;
+
+                G4double ceiling_posX = table_posX;
+                G4double ceiling_posY = table_posY;
+                G4double ceiling_posZ = chamber_side/2 - ceilingZ/2.;
+
+                G4Box* solid_ceiling = new G4Box("solid_ceiling", ceilingX/2., ceilingY/2., ceilingZ/2.);
+                G4LogicalVolume* log_ceiling = new G4LogicalVolume(solid_ceiling, coll_mat, "log_ceiling");
+                G4VPhysicalVolume* phys_ceiling = new G4PVPlacement(0, G4ThreeVector(ceiling_posX, ceiling_posY, ceiling_posZ), log_ceiling, "ceiling", log_chamber, false, ceiling_copy, true);
+
+                G4VisAttributes* VisCeiling = new G4VisAttributes(G4Colour::Black());
+                log_ceiling->SetVisAttributes(VisCeiling);
+
+                if (floor_sens == 1)
+                    gm.AddXYZDetector(log_ceiling);   
+            }
 
             /* Black coat */
             G4int coat_copy = 35;
@@ -2343,7 +3003,6 @@ G4VPhysicalVolume* GeometryCOSI_EMXwall::ConstructGeometry(G4VPhysicalVolume* Wo
             if (block_sens == 1)
                 gm.AddXYZDetector(log_block);
 
-            // Keyword for sources with casing
             G4int is_casing = 0;
             gm.config->readInto(is_casing, "GEOM.COSI.IS.CASING");
             G4cout << "GEOM.COSI.IS.CASING: " << is_casing << G4endl;
@@ -2951,13 +3610,6 @@ G4VPhysicalVolume* GeometryCOSI_EMXwall::ConstructGeometry(G4VPhysicalVolume* Wo
 
             /* --------------------- OPTICAL SURFACES ----------------------- */
 
-            /* We use the Unified Model.*/
-            /* For each BGO, there are two optical surfaces between the BGO and the reflective layers:*/
-            /* 1. BGO -> VM2000 (non-SiPM face) */
-            /*    Finish: Polishedbackpainted, sigma = 1.3 deg (Janecek 2009), SS reflection and reflectivity to ~99% (Janecek 2012) (type1) */
-            /* 2. BGO -> Tetratex (SiPM face)   */
-            /*    Finish: Groundbackpainted, sigma = 1.3 deg (Janecek 2009), L reflection and reflectivity to ~96% (Janecek 2012) (type4) */
-
             /** BGO1 **/
 
             /* BGO1 -> VM2000 */
@@ -2988,6 +3640,153 @@ G4VPhysicalVolume* GeometryCOSI_EMXwall::ConstructGeometry(G4VPhysicalVolume* Wo
                 panel_OPTSURFACE_MPT_BGO1->AddProperty("RINDEX", OPTSURFACE_Energy_BGO1, OPTSURFACE_RIND_BGO1);
                 panel_OPTSURFACE_MPT_BGO1->DumpTable();
             }
+
+            if (setReflSurfaceType == 2) {
+                panel_OPTSURFACE_BGO1->SetModel(LUT);
+                panel_OPTSURFACE_BGO1->SetType(dielectric_LUT);
+
+                panel_OPTSURFACE_BGO1->SetFinish(polishedvm2000air);
+
+                std::vector<G4double> OPTSURFACE_Energy_BGO1 = {1.547868 *eV, 1.569420 *eV, 1.593627 *eV, 1.618593 *eV, 1.631371 *eV, 1.657543 *eV, 1.696090 *eV, 1.748719 *eV, 1.789094 *eV, 1.850510 *eV, 1.919260 *eV, 1.990116 *eV, 2.066403 *eV, 2.137659 *eV, 2.206125 *eV, 2.270773 *eV, 2.352641 *eV, 2.455133 *eV, 2.561657 *eV, 2.637962 *eV, 2.736958 *eV, 2.843674 *eV, 3.002039 *eV, 3.107373 *eV, 3.162862 *eV, 3.195469 *eV, 3.212026 *eV, 3.220369 *eV, 3.245660 *eV, 3.254178 *eV, 3.280005 *eV, 3.315086 *eV, 3.415543 *eV, 3.492513 *eV, 3.573032 *eV, 3.657351 *eV, 3.745746 *eV, 3.948541 *eV, 4.146629 *eV, 4.381067 *eV, 4.558243 *eV, 4.714228 *eV, 4.959368 *eV};
+                std::vector<G4double> OPTSURFACE_refl_BGO1 = {0.999, 0.999, 0.996, 0.994, 0.985, 0.988, 0.990, 0.985, 0.987, 0.978, 0.970, 0.973, 0.975, 0.976, 0.982, 0.987, 0.990, 0.993, 0.997, 0.996, 0.984, 0.990, 0.985, 0.953, 0.870, 0.762, 0.657, 0.533, 0.392, 0.274, 0.157, 0.124, 0.124, 0.102, 0.0991, 0.0902, 0.0873, 0.0710, 0.0385, 0.0592, 0.0843, 0.123, 0.149}; // Janecek 2012
+
+                panel_OPTSURFACE_MPT_BGO1->AddProperty("REFLECTIVITY", OPTSURFACE_Energy_BGO1, OPTSURFACE_refl_BGO1);
+                panel_OPTSURFACE_MPT_BGO1->DumpTable();
+            }
+
+            if (setReflSurfaceType == 3) {
+                panel_OPTSURFACE_BGO1->SetModel(LUT);
+                panel_OPTSURFACE_BGO1->SetType(dielectric_LUT);
+
+                panel_OPTSURFACE_BGO1->SetFinish(etchedvm2000air);
+
+                std::vector<G4double> OPTSURFACE_Energy_BGO1 = {1.547868 *eV, 1.569420 *eV, 1.593627 *eV, 1.618593 *eV, 1.631371 *eV, 1.657543 *eV, 1.696090 *eV, 1.748719 *eV, 1.789094 *eV, 1.850510 *eV, 1.919260 *eV, 1.990116 *eV, 2.066403 *eV, 2.137659 *eV, 2.206125 *eV, 2.270773 *eV, 2.352641 *eV, 2.455133 *eV, 2.561657 *eV, 2.637962 *eV, 2.736958 *eV, 2.843674 *eV, 3.002039 *eV, 3.107373 *eV, 3.162862 *eV, 3.195469 *eV, 3.212026 *eV, 3.220369 *eV, 3.245660 *eV, 3.254178 *eV, 3.280005 *eV, 3.315086 *eV, 3.415543 *eV, 3.492513 *eV, 3.573032 *eV, 3.657351 *eV, 3.745746 *eV, 3.948541 *eV, 4.146629 *eV, 4.381067 *eV, 4.558243 *eV, 4.714228 *eV, 4.959368 *eV};
+                std::vector<G4double> OPTSURFACE_refl_BGO1 = {0.999, 0.999, 0.996, 0.994, 0.985, 0.988, 0.990, 0.985, 0.987, 0.978, 0.970, 0.973, 0.975, 0.976, 0.982, 0.987, 0.990, 0.993, 0.997, 0.996, 0.984, 0.990, 0.985, 0.953, 0.870, 0.762, 0.657, 0.533, 0.392, 0.274, 0.157, 0.124, 0.124, 0.102, 0.0991, 0.0902, 0.0873, 0.0710, 0.0385, 0.0592, 0.0843, 0.123, 0.149}; // Janecek 2012
+
+                panel_OPTSURFACE_MPT_BGO1->AddProperty("REFLECTIVITY", OPTSURFACE_Energy_BGO1, OPTSURFACE_refl_BGO1);
+                panel_OPTSURFACE_MPT_BGO1->DumpTable();
+            }
+
+            if (setReflSurfaceType == 4) {
+                panel_OPTSURFACE_BGO1->SetModel(LUT);
+                panel_OPTSURFACE_BGO1->SetType(dielectric_LUT);
+
+                panel_OPTSURFACE_BGO1->SetFinish(groundvm2000air);
+
+                std::vector<G4double> OPTSURFACE_Energy_BGO1 = {1.547868 *eV, 1.569420 *eV, 1.593627 *eV, 1.618593 *eV, 1.631371 *eV, 1.657543 *eV, 1.696090 *eV, 1.748719 *eV, 1.789094 *eV, 1.850510 *eV, 1.919260 *eV, 1.990116 *eV, 2.066403 *eV, 2.137659 *eV, 2.206125 *eV, 2.270773 *eV, 2.352641 *eV, 2.455133 *eV, 2.561657 *eV, 2.637962 *eV, 2.736958 *eV, 2.843674 *eV, 3.002039 *eV, 3.107373 *eV, 3.162862 *eV, 3.195469 *eV, 3.212026 *eV, 3.220369 *eV, 3.245660 *eV, 3.254178 *eV, 3.280005 *eV, 3.315086 *eV, 3.415543 *eV, 3.492513 *eV, 3.573032 *eV, 3.657351 *eV, 3.745746 *eV, 3.948541 *eV, 4.146629 *eV, 4.381067 *eV, 4.558243 *eV, 4.714228 *eV, 4.959368 *eV};
+                std::vector<G4double> OPTSURFACE_refl_BGO1 = {0.999, 0.999, 0.996, 0.994, 0.985, 0.988, 0.990, 0.985, 0.987, 0.978, 0.970, 0.973, 0.975, 0.976, 0.982, 0.987, 0.990, 0.993, 0.997, 0.996, 0.984, 0.990, 0.985, 0.953, 0.870, 0.762, 0.657, 0.533, 0.392, 0.274, 0.157, 0.124, 0.124, 0.102, 0.0991, 0.0902, 0.0873, 0.0710, 0.0385, 0.0592, 0.0843, 0.123, 0.149}; // Janecek 2012
+
+                panel_OPTSURFACE_MPT_BGO1->AddProperty("REFLECTIVITY", OPTSURFACE_Energy_BGO1, OPTSURFACE_refl_BGO1);
+                panel_OPTSURFACE_MPT_BGO1->DumpTable();
+            }
+
+            if (setReflSurfaceType == 5) {
+                panel_OPTSURFACE_BGO1->SetModel(unified);
+                panel_OPTSURFACE_BGO1->SetType(dielectric_dielectric);
+
+                panel_OPTSURFACE_BGO1->SetFinish(polishedbackpainted);
+                panel_OPTSURFACE_BGO1->SetSigmaAlpha(1.3*degree);
+                
+                std::vector<G4double> OPTSURFACE_Energy_BGO1 = {1.*eV, 3.*eV, 5.*eV, 7.*eV, 10.*eV};
+                std::vector<G4double> OPTSURFACE_refl_BGO1 = {0.999, 0.999, 0.999, 0.999, 0.999};
+                std::vector<G4double> OPTSURFACE_SPECULARLOBECONSTANT_BGO1 = { 0, 0, 0, 0, 0};
+                std::vector<G4double> OPTSURFACE_SPECULARSPIKECONSTANT_BGO1 = { 1, 1, 1, 1, 1 };
+                std::vector<G4double> OPTSURFACE_BACKSCATTERCONSTANT_BGO1 = { 0, 0, 0, 0, 0};
+                std::vector<G4double> OPTSURFACE_RIND_BGO1 = { 1.00293, 1.00293, 1.00293, 1.00293, 1.00293};
+            
+                panel_OPTSURFACE_MPT_BGO1->AddProperty("REFLECTIVITY", OPTSURFACE_Energy_BGO1, OPTSURFACE_refl_BGO1);
+                panel_OPTSURFACE_MPT_BGO1->AddProperty("SPECULARLOBECONSTANT", OPTSURFACE_Energy_BGO1, OPTSURFACE_SPECULARLOBECONSTANT_BGO1);
+                panel_OPTSURFACE_MPT_BGO1->AddProperty("SPECULARSPIKECONSTANT", OPTSURFACE_Energy_BGO1, OPTSURFACE_SPECULARSPIKECONSTANT_BGO1);
+                panel_OPTSURFACE_MPT_BGO1->AddProperty("BACKSCATTERCONSTANT", OPTSURFACE_Energy_BGO1, OPTSURFACE_BACKSCATTERCONSTANT_BGO1);
+                panel_OPTSURFACE_MPT_BGO1->AddProperty("RINDEX", OPTSURFACE_Energy_BGO1, OPTSURFACE_RIND_BGO1);
+                panel_OPTSURFACE_MPT_BGO1->DumpTable();
+            }
+
+            if (setReflSurfaceType == 6) {
+                panel_OPTSURFACE_BGO1->SetModel(unified);
+                panel_OPTSURFACE_BGO1->SetType(dielectric_metal);
+
+                panel_OPTSURFACE_BGO1->SetFinish(polished);
+                
+                std::vector<G4double> OPTSURFACE_Energy_BGO1 = {1.547868 *eV, 1.569420 *eV, 1.593627 *eV, 1.618593 *eV, 1.631371 *eV, 1.657543 *eV, 1.696090 *eV, 1.748719 *eV, 1.789094 *eV, 1.850510 *eV, 1.919260 *eV, 1.990116 *eV, 2.066403 *eV, 2.137659 *eV, 2.206125 *eV, 2.270773 *eV, 2.352641 *eV, 2.455133 *eV, 2.561657 *eV, 2.637962 *eV, 2.736958 *eV, 2.843674 *eV, 3.002039 *eV, 3.107373 *eV, 3.162862 *eV, 3.195469 *eV, 3.212026 *eV, 3.220369 *eV, 3.245660 *eV, 3.254178 *eV, 3.280005 *eV, 3.315086 *eV, 3.415543 *eV, 3.492513 *eV, 3.573032 *eV, 3.657351 *eV, 3.745746 *eV, 3.948541 *eV, 4.146629 *eV, 4.381067 *eV, 4.558243 *eV, 4.714228 *eV, 4.959368 *eV};
+                std::vector<G4double> OPTSURFACE_refl_BGO1 = {0.999, 0.999, 0.996, 0.994, 0.985, 0.988, 0.990, 0.985, 0.987, 0.978, 0.970, 0.973, 0.975, 0.976, 0.982, 0.987, 0.990, 0.993, 0.997, 0.996, 0.984, 0.990, 0.985, 0.953, 0.870, 0.762, 0.657, 0.533, 0.392, 0.274, 0.157, 0.124, 0.124, 0.102, 0.0991, 0.0902, 0.0873, 0.0710, 0.0385, 0.0592, 0.0843, 0.123, 0.149}; // Janecek 2012
+                std::vector<G4double> OPTSURFACE_SPECULARLOBECONSTANT_BGO1 = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+                std::vector<G4double> OPTSURFACE_SPECULARSPIKECONSTANT_BGO1 = { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 };
+                std::vector<G4double> OPTSURFACE_BACKSCATTERCONSTANT_BGO1 = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+                std::vector<G4double> OPTSURFACE_RIND_BGO1 = { 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293};
+            
+                panel_OPTSURFACE_MPT_BGO1->AddProperty("REFLECTIVITY", OPTSURFACE_Energy_BGO1, OPTSURFACE_refl_BGO1);
+                panel_OPTSURFACE_MPT_BGO1->AddProperty("SPECULARLOBECONSTANT", OPTSURFACE_Energy_BGO1, OPTSURFACE_SPECULARLOBECONSTANT_BGO1);
+                panel_OPTSURFACE_MPT_BGO1->AddProperty("SPECULARSPIKECONSTANT", OPTSURFACE_Energy_BGO1, OPTSURFACE_SPECULARSPIKECONSTANT_BGO1);
+                panel_OPTSURFACE_MPT_BGO1->AddProperty("BACKSCATTERCONSTANT", OPTSURFACE_Energy_BGO1, OPTSURFACE_BACKSCATTERCONSTANT_BGO1);
+                panel_OPTSURFACE_MPT_BGO1->AddProperty("RINDEX", OPTSURFACE_Energy_BGO1, OPTSURFACE_RIND_BGO1);
+                panel_OPTSURFACE_MPT_BGO1->DumpTable();
+            }
+
+            if (setReflSurfaceType == 7) {
+                panel_OPTSURFACE_BGO1->SetModel(unified);
+                panel_OPTSURFACE_BGO1->SetType(dielectric_dielectric);
+
+                panel_OPTSURFACE_BGO1->SetFinish(polishedbackpainted);
+                panel_OPTSURFACE_BGO1->SetSigmaAlpha(1.3*degree);
+                
+                std::vector<G4double> OPTSURFACE_Energy_BGO1 = {1.547868 *eV, 1.569420 *eV, 1.593627 *eV, 1.618593 *eV, 1.631371 *eV, 1.657543 *eV, 1.696090 *eV, 1.748719 *eV, 1.789094 *eV, 1.850510 *eV, 1.919260 *eV, 1.990116 *eV, 2.066403 *eV, 2.137659 *eV, 2.206125 *eV, 2.270773 *eV, 2.352641 *eV, 2.455133 *eV, 2.561657 *eV, 2.637962 *eV, 2.736958 *eV, 2.843674 *eV, 3.002039 *eV, 3.107373 *eV, 3.162862 *eV, 3.195469 *eV, 3.212026 *eV, 3.220369 *eV, 3.245660 *eV, 3.254178 *eV, 3.280005 *eV, 3.315086 *eV, 3.415543 *eV, 3.492513 *eV, 3.573032 *eV, 3.657351 *eV, 3.745746 *eV, 3.948541 *eV, 4.146629 *eV, 4.381067 *eV, 4.558243 *eV, 4.714228 *eV, 4.959368 *eV};
+                std::vector<G4double> OPTSURFACE_refl_BGO1 = {0.999, 0.999, 0.996, 0.994, 0.985, 0.988, 0.990, 0.985, 0.987, 0.978, 0.970, 0.973, 0.975, 0.976, 0.982, 0.987, 0.990, 0.993, 0.997, 0.996, 0.984, 0.990, 0.985, 0.953, 0.870, 0.762, 0.657, 0.533, 0.392, 0.274, 0.157, 0.124, 0.124, 0.102, 0.0991, 0.0902, 0.0873, 0.0710, 0.0385, 0.0592, 0.0843, 0.123, 0.149}; // Janecek 2012
+                std::vector<G4double> OPTSURFACE_SPECULARLOBECONSTANT_BGO1 = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+                std::vector<G4double> OPTSURFACE_SPECULARSPIKECONSTANT_BGO1 = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+                std::vector<G4double> OPTSURFACE_BACKSCATTERCONSTANT_BGO1 = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+                std::vector<G4double> OPTSURFACE_RIND_BGO1 = { 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293};
+            
+                panel_OPTSURFACE_MPT_BGO1->AddProperty("REFLECTIVITY", OPTSURFACE_Energy_BGO1, OPTSURFACE_refl_BGO1);
+                panel_OPTSURFACE_MPT_BGO1->AddProperty("SPECULARLOBECONSTANT", OPTSURFACE_Energy_BGO1, OPTSURFACE_SPECULARLOBECONSTANT_BGO1);
+                panel_OPTSURFACE_MPT_BGO1->AddProperty("SPECULARSPIKECONSTANT", OPTSURFACE_Energy_BGO1, OPTSURFACE_SPECULARSPIKECONSTANT_BGO1);
+                panel_OPTSURFACE_MPT_BGO1->AddProperty("BACKSCATTERCONSTANT", OPTSURFACE_Energy_BGO1, OPTSURFACE_BACKSCATTERCONSTANT_BGO1);
+                panel_OPTSURFACE_MPT_BGO1->AddProperty("RINDEX", OPTSURFACE_Energy_BGO1, OPTSURFACE_RIND_BGO1);
+                panel_OPTSURFACE_MPT_BGO1->DumpTable();
+            }
+
+            if (setReflSurfaceType == 8) {
+                panel_OPTSURFACE_BGO1->SetModel(unified);
+                panel_OPTSURFACE_BGO1->SetType(dielectric_dielectric);
+
+                panel_OPTSURFACE_BGO1->SetFinish(polishedbackpainted);
+                panel_OPTSURFACE_BGO1->SetSigmaAlpha(2*degree);
+                
+                std::vector<G4double> OPTSURFACE_Energy_BGO1 = {1.547868 *eV, 1.569420 *eV, 1.593627 *eV, 1.618593 *eV, 1.631371 *eV, 1.657543 *eV, 1.696090 *eV, 1.748719 *eV, 1.789094 *eV, 1.850510 *eV, 1.919260 *eV, 1.990116 *eV, 2.066403 *eV, 2.137659 *eV, 2.206125 *eV, 2.270773 *eV, 2.352641 *eV, 2.455133 *eV, 2.561657 *eV, 2.637962 *eV, 2.736958 *eV, 2.843674 *eV, 3.002039 *eV, 3.107373 *eV, 3.162862 *eV, 3.195469 *eV, 3.212026 *eV, 3.220369 *eV, 3.245660 *eV, 3.254178 *eV, 3.280005 *eV, 3.315086 *eV, 3.415543 *eV, 3.492513 *eV, 3.573032 *eV, 3.657351 *eV, 3.745746 *eV, 3.948541 *eV, 4.146629 *eV, 4.381067 *eV, 4.558243 *eV, 4.714228 *eV, 4.959368 *eV};
+                std::vector<G4double> OPTSURFACE_refl_BGO1 = {0.999, 0.999, 0.996, 0.994, 0.985, 0.988, 0.990, 0.985, 0.987, 0.978, 0.970, 0.973, 0.975, 0.976, 0.982, 0.987, 0.990, 0.993, 0.997, 0.996, 0.984, 0.990, 0.985, 0.953, 0.870, 0.762, 0.657, 0.533, 0.392, 0.274, 0.157, 0.124, 0.124, 0.102, 0.0991, 0.0902, 0.0873, 0.0710, 0.0385, 0.0592, 0.0843, 0.123, 0.149}; // Janecek 2012
+                std::vector<G4double> OPTSURFACE_SPECULARLOBECONSTANT_BGO1 = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+                std::vector<G4double> OPTSURFACE_SPECULARSPIKECONSTANT_BGO1 = { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 };
+                std::vector<G4double> OPTSURFACE_BACKSCATTERCONSTANT_BGO1 = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+                std::vector<G4double> OPTSURFACE_RIND_BGO1 = { 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293};
+            
+                panel_OPTSURFACE_MPT_BGO1->AddProperty("REFLECTIVITY", OPTSURFACE_Energy_BGO1, OPTSURFACE_refl_BGO1);
+                panel_OPTSURFACE_MPT_BGO1->AddProperty("SPECULARLOBECONSTANT", OPTSURFACE_Energy_BGO1, OPTSURFACE_SPECULARLOBECONSTANT_BGO1);
+                panel_OPTSURFACE_MPT_BGO1->AddProperty("SPECULARSPIKECONSTANT", OPTSURFACE_Energy_BGO1, OPTSURFACE_SPECULARSPIKECONSTANT_BGO1);
+                panel_OPTSURFACE_MPT_BGO1->AddProperty("BACKSCATTERCONSTANT", OPTSURFACE_Energy_BGO1, OPTSURFACE_BACKSCATTERCONSTANT_BGO1);
+                panel_OPTSURFACE_MPT_BGO1->AddProperty("RINDEX", OPTSURFACE_Energy_BGO1, OPTSURFACE_RIND_BGO1);
+                panel_OPTSURFACE_MPT_BGO1->DumpTable();
+            }
+            if (setReflSurfaceType == 9) {
+                panel_OPTSURFACE_BGO1->SetModel(unified);
+                panel_OPTSURFACE_BGO1->SetType(dielectric_dielectric);
+
+                panel_OPTSURFACE_BGO1->SetFinish(polishedbackpainted);
+                panel_OPTSURFACE_BGO1->SetSigmaAlpha(1.3*degree);
+                
+                std::vector<G4double> OPTSURFACE_Energy_BGO1 = {1.547868 *eV, 1.569420 *eV, 1.593627 *eV, 1.618593 *eV, 1.631371 *eV, 1.657543 *eV, 1.696090 *eV, 1.748719 *eV, 1.789094 *eV, 1.850510 *eV, 1.919260 *eV, 1.990116 *eV, 2.066403 *eV, 2.137659 *eV, 2.206125 *eV, 2.270773 *eV, 2.352641 *eV, 2.455133 *eV, 2.561657 *eV, 2.637962 *eV, 2.736958 *eV, 2.843674 *eV, 3.002039 *eV, 3.107373 *eV, 3.162862 *eV, 3.195469 *eV, 3.212026 *eV, 3.220369 *eV, 3.245660 *eV, 3.254178 *eV, 3.280005 *eV, 3.315086 *eV, 3.415543 *eV, 3.492513 *eV, 3.573032 *eV, 3.657351 *eV, 3.745746 *eV, 3.948541 *eV, 4.146629 *eV, 4.381067 *eV, 4.558243 *eV, 4.714228 *eV, 4.959368 *eV};
+                std::vector<G4double> OPTSURFACE_refl_BGO1 = {0.999, 0.999, 0.996, 0.994, 0.985, 0.988, 0.990, 0.985, 0.987, 0.978, 0.970, 0.973, 0.975, 0.976, 0.982, 0.987, 0.990, 0.993, 0.997, 0.996, 0.984, 0.990, 0.985, 0.953, 0.870, 0.762, 0.657, 0.533, 0.392, 0.274, 0.157, 0.124, 0.124, 0.102, 0.0991, 0.0902, 0.0873, 0.0710, 0.0385, 0.0592, 0.0843, 0.123, 0.149}; // Janecek 2012
+                std::vector<G4double> OPTSURFACE_SPECULARLOBECONSTANT_BGO1 = { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 };
+                std::vector<G4double> OPTSURFACE_SPECULARSPIKECONSTANT_BGO1 = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+                std::vector<G4double> OPTSURFACE_BACKSCATTERCONSTANT_BGO1 = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+                std::vector<G4double> OPTSURFACE_RIND_BGO1 = { 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293};
+            
+                panel_OPTSURFACE_MPT_BGO1->AddProperty("REFLECTIVITY", OPTSURFACE_Energy_BGO1, OPTSURFACE_refl_BGO1);
+                panel_OPTSURFACE_MPT_BGO1->AddProperty("SPECULARLOBECONSTANT", OPTSURFACE_Energy_BGO1, OPTSURFACE_SPECULARLOBECONSTANT_BGO1);
+                panel_OPTSURFACE_MPT_BGO1->AddProperty("SPECULARSPIKECONSTANT", OPTSURFACE_Energy_BGO1, OPTSURFACE_SPECULARSPIKECONSTANT_BGO1);
+                panel_OPTSURFACE_MPT_BGO1->AddProperty("BACKSCATTERCONSTANT", OPTSURFACE_Energy_BGO1, OPTSURFACE_BACKSCATTERCONSTANT_BGO1);
+                panel_OPTSURFACE_MPT_BGO1->AddProperty("RINDEX", OPTSURFACE_Energy_BGO1, OPTSURFACE_RIND_BGO1);
+                panel_OPTSURFACE_MPT_BGO1->DumpTable();
+            }
             panel_OPTSURFACE_BGO1->SetMaterialPropertiesTable(panel_OPTSURFACE_MPT_BGO1);
 
             /* BGO1 -> Tetratex (SiPM face) */
@@ -2997,6 +3796,62 @@ G4VPhysicalVolume* GeometryCOSI_EMXwall::ConstructGeometry(G4VPhysicalVolume* Wo
 
             G4MaterialPropertiesTable* panel_OPTSURFACE2_MPT_BGO1 = new G4MaterialPropertiesTable();
             
+            if (setReflSurface2Type == 1) {
+                panel_OPTSURFACE2_BGO1->SetModel(unified);
+                panel_OPTSURFACE2_BGO1->SetType(dielectric_dielectric);
+
+                panel_OPTSURFACE2_BGO1->SetFinish(polishedbackpainted);
+                panel_OPTSURFACE2_BGO1->SetSigmaAlpha(1.3*degree);
+                
+                std::vector<G4double> OPTSURFACE2_Energy_BGO1 = {1.573404*eV, 1.637836*eV, 1.736473*eV, 1.881399*eV, 2.029201*eV, 2.270773*eV, 2.610194*eV, 2.917275*eV, 3.195469*eV, 3.350924*eV, 3.562764*eV, 3.838520*eV, 4.146629*eV, 4.320007*eV, 4.524971*eV, 4.696371*eV, 4.939609*eV};
+                std::vector<G4double> OPTSURFACE2_refl_BGO1 = {0.870, 0.881, 0.891, 0.906, 0.916, 0.928, 0.937, 0.946, 0.954, 0.957, 0.958, 0.963, 0.964, 0.969, 0.969, 0.963, 0.972}; // Janecek 2012
+                std::vector<G4double> OPTSURFACE2_SPECULARLOBECONSTANT_BGO1 = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+                std::vector<G4double> OPTSURFACE2_SPECULARSPIKECONSTANT_BGO1 = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+                std::vector<G4double> OPTSURFACE2_BACKSCATTERCONSTANT_BGO1 = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+                std::vector<G4double> OPTSURFACE2_RIND_BGO1 = { 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293};
+            
+                panel_OPTSURFACE2_MPT_BGO1->AddProperty("REFLECTIVITY", OPTSURFACE2_Energy_BGO1, OPTSURFACE2_refl_BGO1);
+                panel_OPTSURFACE2_MPT_BGO1->AddProperty("SPECULARLOBECONSTANT", OPTSURFACE2_Energy_BGO1, OPTSURFACE2_SPECULARLOBECONSTANT_BGO1);
+                panel_OPTSURFACE2_MPT_BGO1->AddProperty("SPECULARSPIKECONSTANT", OPTSURFACE2_Energy_BGO1, OPTSURFACE2_SPECULARSPIKECONSTANT_BGO1);
+                panel_OPTSURFACE2_MPT_BGO1->AddProperty("BACKSCATTERCONSTANT", OPTSURFACE2_Energy_BGO1, OPTSURFACE2_BACKSCATTERCONSTANT_BGO1);
+                panel_OPTSURFACE2_MPT_BGO1->AddProperty("RINDEX", OPTSURFACE2_Energy_BGO1, OPTSURFACE2_RIND_BGO1);
+                panel_OPTSURFACE2_MPT_BGO1->DumpTable();
+            }
+
+            if (setReflSurface2Type == 2) {
+                panel_OPTSURFACE2_BGO1->SetModel(unified);
+                panel_OPTSURFACE2_BGO1->SetType(dielectric_dielectric);
+
+                panel_OPTSURFACE2_BGO1->SetFinish(polishedbackpainted);
+                panel_OPTSURFACE2_BGO1->SetSigmaAlpha(1.3*degree);
+                
+                std::vector<G4double> OPTSURFACE2_Energy_BGO1 = {1.573404*eV, 1.637836*eV, 1.736473*eV, 1.881399*eV, 2.029201*eV, 2.270773*eV, 2.610194*eV, 2.917275*eV, 3.195469*eV, 3.350924*eV, 3.562764*eV, 3.838520*eV, 4.146629*eV, 4.320007*eV, 4.524971*eV, 4.696371*eV, 4.939609*eV};
+                std::vector<G4double> OPTSURFACE2_refl_BGO1 = {0.870, 0.881, 0.891, 0.906, 0.916, 0.928, 0.937, 0.946, 0.954, 0.957, 0.958, 0.963, 0.964, 0.969, 0.969, 0.963, 0.972}; // Janecek 2012
+                std::vector<G4double> OPTSURFACE2_SPECULARLOBECONSTANT_BGO1 = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+                std::vector<G4double> OPTSURFACE2_SPECULARSPIKECONSTANT_BGO1 = { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 };
+                std::vector<G4double> OPTSURFACE2_BACKSCATTERCONSTANT_BGO1 = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+                std::vector<G4double> OPTSURFACE2_RIND_BGO1 = { 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293};
+            
+                panel_OPTSURFACE2_MPT_BGO1->AddProperty("REFLECTIVITY", OPTSURFACE2_Energy_BGO1, OPTSURFACE2_refl_BGO1);
+                panel_OPTSURFACE2_MPT_BGO1->AddProperty("SPECULARLOBECONSTANT", OPTSURFACE2_Energy_BGO1, OPTSURFACE2_SPECULARLOBECONSTANT_BGO1);
+                panel_OPTSURFACE2_MPT_BGO1->AddProperty("SPECULARSPIKECONSTANT", OPTSURFACE2_Energy_BGO1, OPTSURFACE2_SPECULARSPIKECONSTANT_BGO1);
+                panel_OPTSURFACE2_MPT_BGO1->AddProperty("BACKSCATTERCONSTANT", OPTSURFACE2_Energy_BGO1, OPTSURFACE2_BACKSCATTERCONSTANT_BGO1);
+                panel_OPTSURFACE2_MPT_BGO1->AddProperty("RINDEX", OPTSURFACE2_Energy_BGO1, OPTSURFACE2_RIND_BGO1);
+                panel_OPTSURFACE2_MPT_BGO1->DumpTable();
+            }
+            if (setReflSurface2Type == 3) {
+                panel_OPTSURFACE2_BGO1->SetModel(unified);
+                panel_OPTSURFACE2_BGO1->SetType(dielectric_dielectric);
+
+                panel_OPTSURFACE2_BGO1->SetFinish(groundfrontpainted);
+                
+                std::vector<G4double> OPTSURFACE2_Energy_BGO1 = {1.573404*eV, 1.637836*eV, 1.736473*eV, 1.881399*eV, 2.029201*eV, 2.270773*eV, 2.610194*eV, 2.917275*eV, 3.195469*eV, 3.350924*eV, 3.562764*eV, 3.838520*eV, 4.146629*eV, 4.320007*eV, 4.524971*eV, 4.696371*eV, 4.939609*eV};
+                std::vector<G4double> OPTSURFACE2_refl_BGO1 = {0.870, 0.881, 0.891, 0.906, 0.916, 0.928, 0.937, 0.946, 0.954, 0.957, 0.958, 0.963, 0.964, 0.969, 0.969, 0.963, 0.972}; // Janecek 2012
+
+            
+                panel_OPTSURFACE2_MPT_BGO1->AddProperty("REFLECTIVITY", OPTSURFACE2_Energy_BGO1, OPTSURFACE2_refl_BGO1);
+                panel_OPTSURFACE2_MPT_BGO1->DumpTable();
+            }
             if (setReflSurface2Type == 4) {
                 panel_OPTSURFACE2_BGO1->SetModel(unified);
                 panel_OPTSURFACE2_BGO1->SetType(dielectric_dielectric);
@@ -3116,6 +3971,153 @@ G4VPhysicalVolume* GeometryCOSI_EMXwall::ConstructGeometry(G4VPhysicalVolume* Wo
                 panel_OPTSURFACE_MPT_BGO2->AddProperty("RINDEX", OPTSURFACE_Energy_BGO2, OPTSURFACE_RIND_BGO2);
                 panel_OPTSURFACE_MPT_BGO2->DumpTable();
             }
+
+            if (setReflSurfaceType == 2) {
+                panel_OPTSURFACE_BGO2->SetModel(LUT);
+                panel_OPTSURFACE_BGO2->SetType(dielectric_LUT);
+
+                panel_OPTSURFACE_BGO2->SetFinish(polishedvm2000air);
+
+                std::vector<G4double> OPTSURFACE_Energy_BGO2 = {1.547868 *eV, 1.569420 *eV, 1.593627 *eV, 1.618593 *eV, 1.631371 *eV, 1.657543 *eV, 1.696090 *eV, 1.748719 *eV, 1.789094 *eV, 1.850510 *eV, 1.919260 *eV, 1.990116 *eV, 2.066403 *eV, 2.137659 *eV, 2.206125 *eV, 2.270773 *eV, 2.352641 *eV, 2.455133 *eV, 2.561657 *eV, 2.637962 *eV, 2.736958 *eV, 2.843674 *eV, 3.002039 *eV, 3.107373 *eV, 3.162862 *eV, 3.195469 *eV, 3.212026 *eV, 3.220369 *eV, 3.245660 *eV, 3.254178 *eV, 3.280005 *eV, 3.315086 *eV, 3.415543 *eV, 3.492513 *eV, 3.573032 *eV, 3.657351 *eV, 3.745746 *eV, 3.948541 *eV, 4.146629 *eV, 4.381067 *eV, 4.558243 *eV, 4.714228 *eV, 4.959368 *eV};
+                std::vector<G4double> OPTSURFACE_refl_BGO2 = {0.999, 0.999, 0.996, 0.994, 0.985, 0.988, 0.990, 0.985, 0.987, 0.978, 0.970, 0.973, 0.975, 0.976, 0.982, 0.987, 0.990, 0.993, 0.997, 0.996, 0.984, 0.990, 0.985, 0.953, 0.870, 0.762, 0.657, 0.533, 0.392, 0.274, 0.157, 0.124, 0.124, 0.102, 0.0991, 0.0902, 0.0873, 0.0710, 0.0385, 0.0592, 0.0843, 0.123, 0.149}; // Janecek 2012
+
+                panel_OPTSURFACE_MPT_BGO2->AddProperty("REFLECTIVITY", OPTSURFACE_Energy_BGO2, OPTSURFACE_refl_BGO2);
+                panel_OPTSURFACE_MPT_BGO2->DumpTable();
+            }
+
+            if (setReflSurfaceType == 3) {
+                panel_OPTSURFACE_BGO2->SetModel(LUT);
+                panel_OPTSURFACE_BGO2->SetType(dielectric_LUT);
+
+                panel_OPTSURFACE_BGO2->SetFinish(etchedvm2000air);
+
+                std::vector<G4double> OPTSURFACE_Energy_BGO2 = {1.547868 *eV, 1.569420 *eV, 1.593627 *eV, 1.618593 *eV, 1.631371 *eV, 1.657543 *eV, 1.696090 *eV, 1.748719 *eV, 1.789094 *eV, 1.850510 *eV, 1.919260 *eV, 1.990116 *eV, 2.066403 *eV, 2.137659 *eV, 2.206125 *eV, 2.270773 *eV, 2.352641 *eV, 2.455133 *eV, 2.561657 *eV, 2.637962 *eV, 2.736958 *eV, 2.843674 *eV, 3.002039 *eV, 3.107373 *eV, 3.162862 *eV, 3.195469 *eV, 3.212026 *eV, 3.220369 *eV, 3.245660 *eV, 3.254178 *eV, 3.280005 *eV, 3.315086 *eV, 3.415543 *eV, 3.492513 *eV, 3.573032 *eV, 3.657351 *eV, 3.745746 *eV, 3.948541 *eV, 4.146629 *eV, 4.381067 *eV, 4.558243 *eV, 4.714228 *eV, 4.959368 *eV};
+                std::vector<G4double> OPTSURFACE_refl_BGO2 = {0.999, 0.999, 0.996, 0.994, 0.985, 0.988, 0.990, 0.985, 0.987, 0.978, 0.970, 0.973, 0.975, 0.976, 0.982, 0.987, 0.990, 0.993, 0.997, 0.996, 0.984, 0.990, 0.985, 0.953, 0.870, 0.762, 0.657, 0.533, 0.392, 0.274, 0.157, 0.124, 0.124, 0.102, 0.0991, 0.0902, 0.0873, 0.0710, 0.0385, 0.0592, 0.0843, 0.123, 0.149}; // Janecek 2012
+
+                panel_OPTSURFACE_MPT_BGO2->AddProperty("REFLECTIVITY", OPTSURFACE_Energy_BGO2, OPTSURFACE_refl_BGO2);
+                panel_OPTSURFACE_MPT_BGO2->DumpTable();
+            }
+
+            if (setReflSurfaceType == 4) {
+                panel_OPTSURFACE_BGO2->SetModel(LUT);
+                panel_OPTSURFACE_BGO2->SetType(dielectric_LUT);
+
+                panel_OPTSURFACE_BGO2->SetFinish(groundvm2000air);
+
+                std::vector<G4double> OPTSURFACE_Energy_BGO2 = {1.547868 *eV, 1.569420 *eV, 1.593627 *eV, 1.618593 *eV, 1.631371 *eV, 1.657543 *eV, 1.696090 *eV, 1.748719 *eV, 1.789094 *eV, 1.850510 *eV, 1.919260 *eV, 1.990116 *eV, 2.066403 *eV, 2.137659 *eV, 2.206125 *eV, 2.270773 *eV, 2.352641 *eV, 2.455133 *eV, 2.561657 *eV, 2.637962 *eV, 2.736958 *eV, 2.843674 *eV, 3.002039 *eV, 3.107373 *eV, 3.162862 *eV, 3.195469 *eV, 3.212026 *eV, 3.220369 *eV, 3.245660 *eV, 3.254178 *eV, 3.280005 *eV, 3.315086 *eV, 3.415543 *eV, 3.492513 *eV, 3.573032 *eV, 3.657351 *eV, 3.745746 *eV, 3.948541 *eV, 4.146629 *eV, 4.381067 *eV, 4.558243 *eV, 4.714228 *eV, 4.959368 *eV};
+                std::vector<G4double> OPTSURFACE_refl_BGO2 = {0.999, 0.999, 0.996, 0.994, 0.985, 0.988, 0.990, 0.985, 0.987, 0.978, 0.970, 0.973, 0.975, 0.976, 0.982, 0.987, 0.990, 0.993, 0.997, 0.996, 0.984, 0.990, 0.985, 0.953, 0.870, 0.762, 0.657, 0.533, 0.392, 0.274, 0.157, 0.124, 0.124, 0.102, 0.0991, 0.0902, 0.0873, 0.0710, 0.0385, 0.0592, 0.0843, 0.123, 0.149}; // Janecek 2012
+
+                panel_OPTSURFACE_MPT_BGO2->AddProperty("REFLECTIVITY", OPTSURFACE_Energy_BGO2, OPTSURFACE_refl_BGO2);
+                panel_OPTSURFACE_MPT_BGO2->DumpTable();
+            }
+
+            if (setReflSurfaceType == 5) {
+                panel_OPTSURFACE_BGO2->SetModel(unified);
+                panel_OPTSURFACE_BGO2->SetType(dielectric_dielectric);
+
+                panel_OPTSURFACE_BGO2->SetFinish(polishedbackpainted);
+                panel_OPTSURFACE_BGO2->SetSigmaAlpha(1.3*degree);
+                
+                std::vector<G4double> OPTSURFACE_Energy_BGO2 = {1.*eV, 3.*eV, 5.*eV, 7.*eV, 10.*eV};
+                std::vector<G4double> OPTSURFACE_refl_BGO2 = {0.999, 0.999, 0.999, 0.999, 0.999};
+                std::vector<G4double> OPTSURFACE_SPECULARLOBECONSTANT_BGO2 = { 0, 0, 0, 0, 0};
+                std::vector<G4double> OPTSURFACE_SPECULARSPIKECONSTANT_BGO2 = { 1, 1, 1, 1, 1 };
+                std::vector<G4double> OPTSURFACE_BACKSCATTERCONSTANT_BGO2 = { 0, 0, 0, 0, 0};
+                std::vector<G4double> OPTSURFACE_RIND_BGO2 = { 1.00293, 1.00293, 1.00293, 1.00293, 1.00293};
+            
+                panel_OPTSURFACE_MPT_BGO2->AddProperty("REFLECTIVITY", OPTSURFACE_Energy_BGO2, OPTSURFACE_refl_BGO2);
+                panel_OPTSURFACE_MPT_BGO2->AddProperty("SPECULARLOBECONSTANT", OPTSURFACE_Energy_BGO2, OPTSURFACE_SPECULARLOBECONSTANT_BGO2);
+                panel_OPTSURFACE_MPT_BGO2->AddProperty("SPECULARSPIKECONSTANT", OPTSURFACE_Energy_BGO2, OPTSURFACE_SPECULARSPIKECONSTANT_BGO2);
+                panel_OPTSURFACE_MPT_BGO2->AddProperty("BACKSCATTERCONSTANT", OPTSURFACE_Energy_BGO2, OPTSURFACE_BACKSCATTERCONSTANT_BGO2);
+                panel_OPTSURFACE_MPT_BGO2->AddProperty("RINDEX", OPTSURFACE_Energy_BGO2, OPTSURFACE_RIND_BGO2);
+                panel_OPTSURFACE_MPT_BGO2->DumpTable();
+            }
+
+            if (setReflSurfaceType == 6) {
+                panel_OPTSURFACE_BGO2->SetModel(unified);
+                panel_OPTSURFACE_BGO2->SetType(dielectric_metal);
+
+                panel_OPTSURFACE_BGO2->SetFinish(polished);
+                
+                std::vector<G4double> OPTSURFACE_Energy_BGO2 = {1.547868 *eV, 1.569420 *eV, 1.593627 *eV, 1.618593 *eV, 1.631371 *eV, 1.657543 *eV, 1.696090 *eV, 1.748719 *eV, 1.789094 *eV, 1.850510 *eV, 1.919260 *eV, 1.990116 *eV, 2.066403 *eV, 2.137659 *eV, 2.206125 *eV, 2.270773 *eV, 2.352641 *eV, 2.455133 *eV, 2.561657 *eV, 2.637962 *eV, 2.736958 *eV, 2.843674 *eV, 3.002039 *eV, 3.107373 *eV, 3.162862 *eV, 3.195469 *eV, 3.212026 *eV, 3.220369 *eV, 3.245660 *eV, 3.254178 *eV, 3.280005 *eV, 3.315086 *eV, 3.415543 *eV, 3.492513 *eV, 3.573032 *eV, 3.657351 *eV, 3.745746 *eV, 3.948541 *eV, 4.146629 *eV, 4.381067 *eV, 4.558243 *eV, 4.714228 *eV, 4.959368 *eV};
+                std::vector<G4double> OPTSURFACE_refl_BGO2 = {0.999, 0.999, 0.996, 0.994, 0.985, 0.988, 0.990, 0.985, 0.987, 0.978, 0.970, 0.973, 0.975, 0.976, 0.982, 0.987, 0.990, 0.993, 0.997, 0.996, 0.984, 0.990, 0.985, 0.953, 0.870, 0.762, 0.657, 0.533, 0.392, 0.274, 0.157, 0.124, 0.124, 0.102, 0.0991, 0.0902, 0.0873, 0.0710, 0.0385, 0.0592, 0.0843, 0.123, 0.149}; // Janecek 2012
+                std::vector<G4double> OPTSURFACE_SPECULARLOBECONSTANT_BGO2 = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+                std::vector<G4double> OPTSURFACE_SPECULARSPIKECONSTANT_BGO2 = { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 };
+                std::vector<G4double> OPTSURFACE_BACKSCATTERCONSTANT_BGO2 = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+                std::vector<G4double> OPTSURFACE_RIND_BGO2 = { 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293};
+            
+                panel_OPTSURFACE_MPT_BGO2->AddProperty("REFLECTIVITY", OPTSURFACE_Energy_BGO2, OPTSURFACE_refl_BGO2);
+                panel_OPTSURFACE_MPT_BGO2->AddProperty("SPECULARLOBECONSTANT", OPTSURFACE_Energy_BGO2, OPTSURFACE_SPECULARLOBECONSTANT_BGO2);
+                panel_OPTSURFACE_MPT_BGO2->AddProperty("SPECULARSPIKECONSTANT", OPTSURFACE_Energy_BGO2, OPTSURFACE_SPECULARSPIKECONSTANT_BGO2);
+                panel_OPTSURFACE_MPT_BGO2->AddProperty("BACKSCATTERCONSTANT", OPTSURFACE_Energy_BGO2, OPTSURFACE_BACKSCATTERCONSTANT_BGO2);
+                panel_OPTSURFACE_MPT_BGO2->AddProperty("RINDEX", OPTSURFACE_Energy_BGO2, OPTSURFACE_RIND_BGO2);
+                panel_OPTSURFACE_MPT_BGO2->DumpTable();
+            }
+
+            if (setReflSurfaceType == 7) {
+                panel_OPTSURFACE_BGO2->SetModel(unified);
+                panel_OPTSURFACE_BGO2->SetType(dielectric_dielectric);
+
+                panel_OPTSURFACE_BGO2->SetFinish(polishedbackpainted);
+                panel_OPTSURFACE_BGO2->SetSigmaAlpha(1.3*degree);
+                
+                std::vector<G4double> OPTSURFACE_Energy_BGO2 = {1.547868 *eV, 1.569420 *eV, 1.593627 *eV, 1.618593 *eV, 1.631371 *eV, 1.657543 *eV, 1.696090 *eV, 1.748719 *eV, 1.789094 *eV, 1.850510 *eV, 1.919260 *eV, 1.990116 *eV, 2.066403 *eV, 2.137659 *eV, 2.206125 *eV, 2.270773 *eV, 2.352641 *eV, 2.455133 *eV, 2.561657 *eV, 2.637962 *eV, 2.736958 *eV, 2.843674 *eV, 3.002039 *eV, 3.107373 *eV, 3.162862 *eV, 3.195469 *eV, 3.212026 *eV, 3.220369 *eV, 3.245660 *eV, 3.254178 *eV, 3.280005 *eV, 3.315086 *eV, 3.415543 *eV, 3.492513 *eV, 3.573032 *eV, 3.657351 *eV, 3.745746 *eV, 3.948541 *eV, 4.146629 *eV, 4.381067 *eV, 4.558243 *eV, 4.714228 *eV, 4.959368 *eV};
+                std::vector<G4double> OPTSURFACE_refl_BGO2 = {0.999, 0.999, 0.996, 0.994, 0.985, 0.988, 0.990, 0.985, 0.987, 0.978, 0.970, 0.973, 0.975, 0.976, 0.982, 0.987, 0.990, 0.993, 0.997, 0.996, 0.984, 0.990, 0.985, 0.953, 0.870, 0.762, 0.657, 0.533, 0.392, 0.274, 0.157, 0.124, 0.124, 0.102, 0.0991, 0.0902, 0.0873, 0.0710, 0.0385, 0.0592, 0.0843, 0.123, 0.149}; // Janecek 2012
+                std::vector<G4double> OPTSURFACE_SPECULARLOBECONSTANT_BGO2 = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+                std::vector<G4double> OPTSURFACE_SPECULARSPIKECONSTANT_BGO2 = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+                std::vector<G4double> OPTSURFACE_BACKSCATTERCONSTANT_BGO2 = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+                std::vector<G4double> OPTSURFACE_RIND_BGO2 = { 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293};
+            
+                panel_OPTSURFACE_MPT_BGO2->AddProperty("REFLECTIVITY", OPTSURFACE_Energy_BGO2, OPTSURFACE_refl_BGO2);
+                panel_OPTSURFACE_MPT_BGO2->AddProperty("SPECULARLOBECONSTANT", OPTSURFACE_Energy_BGO2, OPTSURFACE_SPECULARLOBECONSTANT_BGO2);
+                panel_OPTSURFACE_MPT_BGO2->AddProperty("SPECULARSPIKECONSTANT", OPTSURFACE_Energy_BGO2, OPTSURFACE_SPECULARSPIKECONSTANT_BGO2);
+                panel_OPTSURFACE_MPT_BGO2->AddProperty("BACKSCATTERCONSTANT", OPTSURFACE_Energy_BGO2, OPTSURFACE_BACKSCATTERCONSTANT_BGO2);
+                panel_OPTSURFACE_MPT_BGO2->AddProperty("RINDEX", OPTSURFACE_Energy_BGO2, OPTSURFACE_RIND_BGO2);
+                panel_OPTSURFACE_MPT_BGO2->DumpTable();
+            }
+
+            if (setReflSurfaceType == 8) {
+                panel_OPTSURFACE_BGO2->SetModel(unified);
+                panel_OPTSURFACE_BGO2->SetType(dielectric_dielectric);
+
+                panel_OPTSURFACE_BGO2->SetFinish(polishedbackpainted);
+                panel_OPTSURFACE_BGO2->SetSigmaAlpha(2*degree);
+                
+                std::vector<G4double> OPTSURFACE_Energy_BGO2 = {1.547868 *eV, 1.569420 *eV, 1.593627 *eV, 1.618593 *eV, 1.631371 *eV, 1.657543 *eV, 1.696090 *eV, 1.748719 *eV, 1.789094 *eV, 1.850510 *eV, 1.919260 *eV, 1.990116 *eV, 2.066403 *eV, 2.137659 *eV, 2.206125 *eV, 2.270773 *eV, 2.352641 *eV, 2.455133 *eV, 2.561657 *eV, 2.637962 *eV, 2.736958 *eV, 2.843674 *eV, 3.002039 *eV, 3.107373 *eV, 3.162862 *eV, 3.195469 *eV, 3.212026 *eV, 3.220369 *eV, 3.245660 *eV, 3.254178 *eV, 3.280005 *eV, 3.315086 *eV, 3.415543 *eV, 3.492513 *eV, 3.573032 *eV, 3.657351 *eV, 3.745746 *eV, 3.948541 *eV, 4.146629 *eV, 4.381067 *eV, 4.558243 *eV, 4.714228 *eV, 4.959368 *eV};
+                std::vector<G4double> OPTSURFACE_refl_BGO2 = {0.999, 0.999, 0.996, 0.994, 0.985, 0.988, 0.990, 0.985, 0.987, 0.978, 0.970, 0.973, 0.975, 0.976, 0.982, 0.987, 0.990, 0.993, 0.997, 0.996, 0.984, 0.990, 0.985, 0.953, 0.870, 0.762, 0.657, 0.533, 0.392, 0.274, 0.157, 0.124, 0.124, 0.102, 0.0991, 0.0902, 0.0873, 0.0710, 0.0385, 0.0592, 0.0843, 0.123, 0.149}; // Janecek 2012
+                std::vector<G4double> OPTSURFACE_SPECULARLOBECONSTANT_BGO2 = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+                std::vector<G4double> OPTSURFACE_SPECULARSPIKECONSTANT_BGO2 = { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 };
+                std::vector<G4double> OPTSURFACE_BACKSCATTERCONSTANT_BGO2 = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+                std::vector<G4double> OPTSURFACE_RIND_BGO2 = { 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293};
+            
+                panel_OPTSURFACE_MPT_BGO2->AddProperty("REFLECTIVITY", OPTSURFACE_Energy_BGO2, OPTSURFACE_refl_BGO2);
+                panel_OPTSURFACE_MPT_BGO2->AddProperty("SPECULARLOBECONSTANT", OPTSURFACE_Energy_BGO2, OPTSURFACE_SPECULARLOBECONSTANT_BGO2);
+                panel_OPTSURFACE_MPT_BGO2->AddProperty("SPECULARSPIKECONSTANT", OPTSURFACE_Energy_BGO2, OPTSURFACE_SPECULARSPIKECONSTANT_BGO2);
+                panel_OPTSURFACE_MPT_BGO2->AddProperty("BACKSCATTERCONSTANT", OPTSURFACE_Energy_BGO2, OPTSURFACE_BACKSCATTERCONSTANT_BGO2);
+                panel_OPTSURFACE_MPT_BGO2->AddProperty("RINDEX", OPTSURFACE_Energy_BGO2, OPTSURFACE_RIND_BGO2);
+                panel_OPTSURFACE_MPT_BGO2->DumpTable();
+            }
+            if (setReflSurfaceType == 9) {
+                panel_OPTSURFACE_BGO2->SetModel(unified);
+                panel_OPTSURFACE_BGO2->SetType(dielectric_dielectric);
+
+                panel_OPTSURFACE_BGO2->SetFinish(polishedbackpainted);
+                panel_OPTSURFACE_BGO2->SetSigmaAlpha(1.3*degree);
+                
+                std::vector<G4double> OPTSURFACE_Energy_BGO2 = {1.547868 *eV, 1.569420 *eV, 1.593627 *eV, 1.618593 *eV, 1.631371 *eV, 1.657543 *eV, 1.696090 *eV, 1.748719 *eV, 1.789094 *eV, 1.850510 *eV, 1.919260 *eV, 1.990116 *eV, 2.066403 *eV, 2.137659 *eV, 2.206125 *eV, 2.270773 *eV, 2.352641 *eV, 2.455133 *eV, 2.561657 *eV, 2.637962 *eV, 2.736958 *eV, 2.843674 *eV, 3.002039 *eV, 3.107373 *eV, 3.162862 *eV, 3.195469 *eV, 3.212026 *eV, 3.220369 *eV, 3.245660 *eV, 3.254178 *eV, 3.280005 *eV, 3.315086 *eV, 3.415543 *eV, 3.492513 *eV, 3.573032 *eV, 3.657351 *eV, 3.745746 *eV, 3.948541 *eV, 4.146629 *eV, 4.381067 *eV, 4.558243 *eV, 4.714228 *eV, 4.959368 *eV};
+                std::vector<G4double> OPTSURFACE_refl_BGO2 = {0.999, 0.999, 0.996, 0.994, 0.985, 0.988, 0.990, 0.985, 0.987, 0.978, 0.970, 0.973, 0.975, 0.976, 0.982, 0.987, 0.990, 0.993, 0.997, 0.996, 0.984, 0.990, 0.985, 0.953, 0.870, 0.762, 0.657, 0.533, 0.392, 0.274, 0.157, 0.124, 0.124, 0.102, 0.0991, 0.0902, 0.0873, 0.0710, 0.0385, 0.0592, 0.0843, 0.123, 0.149}; // Janecek 2012
+                std::vector<G4double> OPTSURFACE_SPECULARLOBECONSTANT_BGO2 = { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 };
+                std::vector<G4double> OPTSURFACE_SPECULARSPIKECONSTANT_BGO2 = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+                std::vector<G4double> OPTSURFACE_BACKSCATTERCONSTANT_BGO2 = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+                std::vector<G4double> OPTSURFACE_RIND_BGO2 = { 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293};
+            
+                panel_OPTSURFACE_MPT_BGO2->AddProperty("REFLECTIVITY", OPTSURFACE_Energy_BGO2, OPTSURFACE_refl_BGO2);
+                panel_OPTSURFACE_MPT_BGO2->AddProperty("SPECULARLOBECONSTANT", OPTSURFACE_Energy_BGO2, OPTSURFACE_SPECULARLOBECONSTANT_BGO2);
+                panel_OPTSURFACE_MPT_BGO2->AddProperty("SPECULARSPIKECONSTANT", OPTSURFACE_Energy_BGO2, OPTSURFACE_SPECULARSPIKECONSTANT_BGO2);
+                panel_OPTSURFACE_MPT_BGO2->AddProperty("BACKSCATTERCONSTANT", OPTSURFACE_Energy_BGO2, OPTSURFACE_BACKSCATTERCONSTANT_BGO2);
+                panel_OPTSURFACE_MPT_BGO2->AddProperty("RINDEX", OPTSURFACE_Energy_BGO2, OPTSURFACE_RIND_BGO2);
+                panel_OPTSURFACE_MPT_BGO2->DumpTable();
+            }
             panel_OPTSURFACE_BGO2->SetMaterialPropertiesTable(panel_OPTSURFACE_MPT_BGO2);
 
             /* BGO2 -> Tetratex (SiPM face) */
@@ -3125,6 +4127,62 @@ G4VPhysicalVolume* GeometryCOSI_EMXwall::ConstructGeometry(G4VPhysicalVolume* Wo
 
             G4MaterialPropertiesTable* panel_OPTSURFACE2_MPT_BGO2 = new G4MaterialPropertiesTable();
             
+            if (setReflSurface2Type == 1) {
+                panel_OPTSURFACE2_BGO2->SetModel(unified);
+                panel_OPTSURFACE2_BGO2->SetType(dielectric_dielectric);
+
+                panel_OPTSURFACE2_BGO2->SetFinish(polishedbackpainted);
+                panel_OPTSURFACE2_BGO2->SetSigmaAlpha(1.3*degree);
+                
+                std::vector<G4double> OPTSURFACE2_Energy_BGO2 = {1.573404*eV, 1.637836*eV, 1.736473*eV, 1.881399*eV, 2.029201*eV, 2.270773*eV, 2.610194*eV, 2.917275*eV, 3.195469*eV, 3.350924*eV, 3.562764*eV, 3.838520*eV, 4.146629*eV, 4.320007*eV, 4.524971*eV, 4.696371*eV, 4.939609*eV};
+                std::vector<G4double> OPTSURFACE2_refl_BGO2 = {0.870, 0.881, 0.891, 0.906, 0.916, 0.928, 0.937, 0.946, 0.954, 0.957, 0.958, 0.963, 0.964, 0.969, 0.969, 0.963, 0.972}; // Janecek 2012
+                std::vector<G4double> OPTSURFACE2_SPECULARLOBECONSTANT_BGO2 = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+                std::vector<G4double> OPTSURFACE2_SPECULARSPIKECONSTANT_BGO2 = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+                std::vector<G4double> OPTSURFACE2_BACKSCATTERCONSTANT_BGO2 = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+                std::vector<G4double> OPTSURFACE2_RIND_BGO2 = { 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293};
+            
+                panel_OPTSURFACE2_MPT_BGO2->AddProperty("REFLECTIVITY", OPTSURFACE2_Energy_BGO2, OPTSURFACE2_refl_BGO2);
+                panel_OPTSURFACE2_MPT_BGO2->AddProperty("SPECULARLOBECONSTANT", OPTSURFACE2_Energy_BGO2, OPTSURFACE2_SPECULARLOBECONSTANT_BGO2);
+                panel_OPTSURFACE2_MPT_BGO2->AddProperty("SPECULARSPIKECONSTANT", OPTSURFACE2_Energy_BGO2, OPTSURFACE2_SPECULARSPIKECONSTANT_BGO2);
+                panel_OPTSURFACE2_MPT_BGO2->AddProperty("BACKSCATTERCONSTANT", OPTSURFACE2_Energy_BGO2, OPTSURFACE2_BACKSCATTERCONSTANT_BGO2);
+                panel_OPTSURFACE2_MPT_BGO2->AddProperty("RINDEX", OPTSURFACE2_Energy_BGO2, OPTSURFACE2_RIND_BGO2);
+                panel_OPTSURFACE2_MPT_BGO2->DumpTable();
+            }
+
+            if (setReflSurface2Type == 2) {
+                panel_OPTSURFACE2_BGO2->SetModel(unified);
+                panel_OPTSURFACE2_BGO2->SetType(dielectric_dielectric);
+
+                panel_OPTSURFACE2_BGO2->SetFinish(polishedbackpainted);
+                panel_OPTSURFACE2_BGO2->SetSigmaAlpha(1.3*degree);
+                
+                std::vector<G4double> OPTSURFACE2_Energy_BGO2 = {1.573404*eV, 1.637836*eV, 1.736473*eV, 1.881399*eV, 2.029201*eV, 2.270773*eV, 2.610194*eV, 2.917275*eV, 3.195469*eV, 3.350924*eV, 3.562764*eV, 3.838520*eV, 4.146629*eV, 4.320007*eV, 4.524971*eV, 4.696371*eV, 4.939609*eV};
+                std::vector<G4double> OPTSURFACE2_refl_BGO2 = {0.870, 0.881, 0.891, 0.906, 0.916, 0.928, 0.937, 0.946, 0.954, 0.957, 0.958, 0.963, 0.964, 0.969, 0.969, 0.963, 0.972}; // Janecek 2012
+                std::vector<G4double> OPTSURFACE2_SPECULARLOBECONSTANT_BGO2 = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+                std::vector<G4double> OPTSURFACE2_SPECULARSPIKECONSTANT_BGO2 = { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 };
+                std::vector<G4double> OPTSURFACE2_BACKSCATTERCONSTANT_BGO2 = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+                std::vector<G4double> OPTSURFACE2_RIND_BGO2 = { 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293};
+            
+                panel_OPTSURFACE2_MPT_BGO2->AddProperty("REFLECTIVITY", OPTSURFACE2_Energy_BGO2, OPTSURFACE2_refl_BGO2);
+                panel_OPTSURFACE2_MPT_BGO2->AddProperty("SPECULARLOBECONSTANT", OPTSURFACE2_Energy_BGO2, OPTSURFACE2_SPECULARLOBECONSTANT_BGO2);
+                panel_OPTSURFACE2_MPT_BGO2->AddProperty("SPECULARSPIKECONSTANT", OPTSURFACE2_Energy_BGO2, OPTSURFACE2_SPECULARSPIKECONSTANT_BGO2);
+                panel_OPTSURFACE2_MPT_BGO2->AddProperty("BACKSCATTERCONSTANT", OPTSURFACE2_Energy_BGO2, OPTSURFACE2_BACKSCATTERCONSTANT_BGO2);
+                panel_OPTSURFACE2_MPT_BGO2->AddProperty("RINDEX", OPTSURFACE2_Energy_BGO2, OPTSURFACE2_RIND_BGO2);
+                panel_OPTSURFACE2_MPT_BGO2->DumpTable();
+            }
+            if (setReflSurface2Type == 3) {
+                panel_OPTSURFACE2_BGO2->SetModel(unified);
+                panel_OPTSURFACE2_BGO2->SetType(dielectric_dielectric);
+
+                panel_OPTSURFACE2_BGO2->SetFinish(groundfrontpainted);
+                
+                std::vector<G4double> OPTSURFACE2_Energy_BGO2 = {1.573404*eV, 1.637836*eV, 1.736473*eV, 1.881399*eV, 2.029201*eV, 2.270773*eV, 2.610194*eV, 2.917275*eV, 3.195469*eV, 3.350924*eV, 3.562764*eV, 3.838520*eV, 4.146629*eV, 4.320007*eV, 4.524971*eV, 4.696371*eV, 4.939609*eV};
+                std::vector<G4double> OPTSURFACE2_refl_BGO2 = {0.870, 0.881, 0.891, 0.906, 0.916, 0.928, 0.937, 0.946, 0.954, 0.957, 0.958, 0.963, 0.964, 0.969, 0.969, 0.963, 0.972}; // Janecek 2012
+
+            
+                panel_OPTSURFACE2_MPT_BGO2->AddProperty("REFLECTIVITY", OPTSURFACE2_Energy_BGO2, OPTSURFACE2_refl_BGO2);
+                panel_OPTSURFACE2_MPT_BGO2->DumpTable();
+            }
             if (setReflSurface2Type == 4) {
                 panel_OPTSURFACE2_BGO2->SetModel(unified);
                 panel_OPTSURFACE2_BGO2->SetType(dielectric_dielectric);
@@ -3244,6 +4302,153 @@ G4VPhysicalVolume* GeometryCOSI_EMXwall::ConstructGeometry(G4VPhysicalVolume* Wo
                 panel_OPTSURFACE_MPT_BGO3->AddProperty("RINDEX", OPTSURFACE_Energy_BGO3, OPTSURFACE_RIND_BGO3);
                 panel_OPTSURFACE_MPT_BGO3->DumpTable();
             }
+
+            if (setReflSurfaceType == 2) {
+                panel_OPTSURFACE_BGO3->SetModel(LUT);
+                panel_OPTSURFACE_BGO3->SetType(dielectric_LUT);
+
+                panel_OPTSURFACE_BGO3->SetFinish(polishedvm2000air);
+
+                std::vector<G4double> OPTSURFACE_Energy_BGO3 = {1.547868 *eV, 1.569420 *eV, 1.593627 *eV, 1.618593 *eV, 1.631371 *eV, 1.657543 *eV, 1.696090 *eV, 1.748719 *eV, 1.789094 *eV, 1.850510 *eV, 1.919260 *eV, 1.990116 *eV, 2.066403 *eV, 2.137659 *eV, 2.206125 *eV, 2.270773 *eV, 2.352641 *eV, 2.455133 *eV, 2.561657 *eV, 2.637962 *eV, 2.736958 *eV, 2.843674 *eV, 3.002039 *eV, 3.107373 *eV, 3.162862 *eV, 3.195469 *eV, 3.212026 *eV, 3.220369 *eV, 3.245660 *eV, 3.254178 *eV, 3.280005 *eV, 3.315086 *eV, 3.415543 *eV, 3.492513 *eV, 3.573032 *eV, 3.657351 *eV, 3.745746 *eV, 3.948541 *eV, 4.146629 *eV, 4.381067 *eV, 4.558243 *eV, 4.714228 *eV, 4.959368 *eV};
+                std::vector<G4double> OPTSURFACE_refl_BGO3 = {0.999, 0.999, 0.996, 0.994, 0.985, 0.988, 0.990, 0.985, 0.987, 0.978, 0.970, 0.973, 0.975, 0.976, 0.982, 0.987, 0.990, 0.993, 0.997, 0.996, 0.984, 0.990, 0.985, 0.953, 0.870, 0.762, 0.657, 0.533, 0.392, 0.274, 0.157, 0.124, 0.124, 0.102, 0.0991, 0.0902, 0.0873, 0.0710, 0.0385, 0.0592, 0.0843, 0.123, 0.149}; // Janecek 2012
+
+                panel_OPTSURFACE_MPT_BGO3->AddProperty("REFLECTIVITY", OPTSURFACE_Energy_BGO3, OPTSURFACE_refl_BGO3);
+                panel_OPTSURFACE_MPT_BGO3->DumpTable();
+            }
+
+            if (setReflSurfaceType == 3) {
+                panel_OPTSURFACE_BGO3->SetModel(LUT);
+                panel_OPTSURFACE_BGO3->SetType(dielectric_LUT);
+
+                panel_OPTSURFACE_BGO3->SetFinish(etchedvm2000air);
+
+                std::vector<G4double> OPTSURFACE_Energy_BGO3 = {1.547868 *eV, 1.569420 *eV, 1.593627 *eV, 1.618593 *eV, 1.631371 *eV, 1.657543 *eV, 1.696090 *eV, 1.748719 *eV, 1.789094 *eV, 1.850510 *eV, 1.919260 *eV, 1.990116 *eV, 2.066403 *eV, 2.137659 *eV, 2.206125 *eV, 2.270773 *eV, 2.352641 *eV, 2.455133 *eV, 2.561657 *eV, 2.637962 *eV, 2.736958 *eV, 2.843674 *eV, 3.002039 *eV, 3.107373 *eV, 3.162862 *eV, 3.195469 *eV, 3.212026 *eV, 3.220369 *eV, 3.245660 *eV, 3.254178 *eV, 3.280005 *eV, 3.315086 *eV, 3.415543 *eV, 3.492513 *eV, 3.573032 *eV, 3.657351 *eV, 3.745746 *eV, 3.948541 *eV, 4.146629 *eV, 4.381067 *eV, 4.558243 *eV, 4.714228 *eV, 4.959368 *eV};
+                std::vector<G4double> OPTSURFACE_refl_BGO3 = {0.999, 0.999, 0.996, 0.994, 0.985, 0.988, 0.990, 0.985, 0.987, 0.978, 0.970, 0.973, 0.975, 0.976, 0.982, 0.987, 0.990, 0.993, 0.997, 0.996, 0.984, 0.990, 0.985, 0.953, 0.870, 0.762, 0.657, 0.533, 0.392, 0.274, 0.157, 0.124, 0.124, 0.102, 0.0991, 0.0902, 0.0873, 0.0710, 0.0385, 0.0592, 0.0843, 0.123, 0.149}; // Janecek 2012
+
+                panel_OPTSURFACE_MPT_BGO3->AddProperty("REFLECTIVITY", OPTSURFACE_Energy_BGO3, OPTSURFACE_refl_BGO3);
+                panel_OPTSURFACE_MPT_BGO3->DumpTable();
+            }
+
+            if (setReflSurfaceType == 4) {
+                panel_OPTSURFACE_BGO3->SetModel(LUT);
+                panel_OPTSURFACE_BGO3->SetType(dielectric_LUT);
+
+                panel_OPTSURFACE_BGO3->SetFinish(groundvm2000air);
+
+                std::vector<G4double> OPTSURFACE_Energy_BGO3 = {1.547868 *eV, 1.569420 *eV, 1.593627 *eV, 1.618593 *eV, 1.631371 *eV, 1.657543 *eV, 1.696090 *eV, 1.748719 *eV, 1.789094 *eV, 1.850510 *eV, 1.919260 *eV, 1.990116 *eV, 2.066403 *eV, 2.137659 *eV, 2.206125 *eV, 2.270773 *eV, 2.352641 *eV, 2.455133 *eV, 2.561657 *eV, 2.637962 *eV, 2.736958 *eV, 2.843674 *eV, 3.002039 *eV, 3.107373 *eV, 3.162862 *eV, 3.195469 *eV, 3.212026 *eV, 3.220369 *eV, 3.245660 *eV, 3.254178 *eV, 3.280005 *eV, 3.315086 *eV, 3.415543 *eV, 3.492513 *eV, 3.573032 *eV, 3.657351 *eV, 3.745746 *eV, 3.948541 *eV, 4.146629 *eV, 4.381067 *eV, 4.558243 *eV, 4.714228 *eV, 4.959368 *eV};
+                std::vector<G4double> OPTSURFACE_refl_BGO3 = {0.999, 0.999, 0.996, 0.994, 0.985, 0.988, 0.990, 0.985, 0.987, 0.978, 0.970, 0.973, 0.975, 0.976, 0.982, 0.987, 0.990, 0.993, 0.997, 0.996, 0.984, 0.990, 0.985, 0.953, 0.870, 0.762, 0.657, 0.533, 0.392, 0.274, 0.157, 0.124, 0.124, 0.102, 0.0991, 0.0902, 0.0873, 0.0710, 0.0385, 0.0592, 0.0843, 0.123, 0.149}; // Janecek 2012
+
+                panel_OPTSURFACE_MPT_BGO3->AddProperty("REFLECTIVITY", OPTSURFACE_Energy_BGO3, OPTSURFACE_refl_BGO3);
+                panel_OPTSURFACE_MPT_BGO3->DumpTable();
+            }
+
+            if (setReflSurfaceType == 5) {
+                panel_OPTSURFACE_BGO3->SetModel(unified);
+                panel_OPTSURFACE_BGO3->SetType(dielectric_dielectric);
+
+                panel_OPTSURFACE_BGO3->SetFinish(polishedbackpainted);
+                panel_OPTSURFACE_BGO3->SetSigmaAlpha(1.3*degree);
+                
+                std::vector<G4double> OPTSURFACE_Energy_BGO3 = {1.*eV, 3.*eV, 5.*eV, 7.*eV, 10.*eV};
+                std::vector<G4double> OPTSURFACE_refl_BGO3 = {0.999, 0.999, 0.999, 0.999, 0.999};
+                std::vector<G4double> OPTSURFACE_SPECULARLOBECONSTANT_BGO3 = { 0, 0, 0, 0, 0};
+                std::vector<G4double> OPTSURFACE_SPECULARSPIKECONSTANT_BGO3 = { 1, 1, 1, 1, 1 };
+                std::vector<G4double> OPTSURFACE_BACKSCATTERCONSTANT_BGO3 = { 0, 0, 0, 0, 0};
+                std::vector<G4double> OPTSURFACE_RIND_BGO3 = { 1.00293, 1.00293, 1.00293, 1.00293, 1.00293};
+            
+                panel_OPTSURFACE_MPT_BGO3->AddProperty("REFLECTIVITY", OPTSURFACE_Energy_BGO3, OPTSURFACE_refl_BGO3);
+                panel_OPTSURFACE_MPT_BGO3->AddProperty("SPECULARLOBECONSTANT", OPTSURFACE_Energy_BGO3, OPTSURFACE_SPECULARLOBECONSTANT_BGO3);
+                panel_OPTSURFACE_MPT_BGO3->AddProperty("SPECULARSPIKECONSTANT", OPTSURFACE_Energy_BGO3, OPTSURFACE_SPECULARSPIKECONSTANT_BGO3);
+                panel_OPTSURFACE_MPT_BGO3->AddProperty("BACKSCATTERCONSTANT", OPTSURFACE_Energy_BGO3, OPTSURFACE_BACKSCATTERCONSTANT_BGO3);
+                panel_OPTSURFACE_MPT_BGO3->AddProperty("RINDEX", OPTSURFACE_Energy_BGO3, OPTSURFACE_RIND_BGO3);
+                panel_OPTSURFACE_MPT_BGO3->DumpTable();
+            }
+
+            if (setReflSurfaceType == 6) {
+                panel_OPTSURFACE_BGO3->SetModel(unified);
+                panel_OPTSURFACE_BGO3->SetType(dielectric_metal);
+
+                panel_OPTSURFACE_BGO3->SetFinish(polished);
+                
+                std::vector<G4double> OPTSURFACE_Energy_BGO3 = {1.547868 *eV, 1.569420 *eV, 1.593627 *eV, 1.618593 *eV, 1.631371 *eV, 1.657543 *eV, 1.696090 *eV, 1.748719 *eV, 1.789094 *eV, 1.850510 *eV, 1.919260 *eV, 1.990116 *eV, 2.066403 *eV, 2.137659 *eV, 2.206125 *eV, 2.270773 *eV, 2.352641 *eV, 2.455133 *eV, 2.561657 *eV, 2.637962 *eV, 2.736958 *eV, 2.843674 *eV, 3.002039 *eV, 3.107373 *eV, 3.162862 *eV, 3.195469 *eV, 3.212026 *eV, 3.220369 *eV, 3.245660 *eV, 3.254178 *eV, 3.280005 *eV, 3.315086 *eV, 3.415543 *eV, 3.492513 *eV, 3.573032 *eV, 3.657351 *eV, 3.745746 *eV, 3.948541 *eV, 4.146629 *eV, 4.381067 *eV, 4.558243 *eV, 4.714228 *eV, 4.959368 *eV};
+                std::vector<G4double> OPTSURFACE_refl_BGO3 = {0.999, 0.999, 0.996, 0.994, 0.985, 0.988, 0.990, 0.985, 0.987, 0.978, 0.970, 0.973, 0.975, 0.976, 0.982, 0.987, 0.990, 0.993, 0.997, 0.996, 0.984, 0.990, 0.985, 0.953, 0.870, 0.762, 0.657, 0.533, 0.392, 0.274, 0.157, 0.124, 0.124, 0.102, 0.0991, 0.0902, 0.0873, 0.0710, 0.0385, 0.0592, 0.0843, 0.123, 0.149}; // Janecek 2012
+                std::vector<G4double> OPTSURFACE_SPECULARLOBECONSTANT_BGO3 = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+                std::vector<G4double> OPTSURFACE_SPECULARSPIKECONSTANT_BGO3 = { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 };
+                std::vector<G4double> OPTSURFACE_BACKSCATTERCONSTANT_BGO3 = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+                std::vector<G4double> OPTSURFACE_RIND_BGO3 = { 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293};
+            
+                panel_OPTSURFACE_MPT_BGO3->AddProperty("REFLECTIVITY", OPTSURFACE_Energy_BGO3, OPTSURFACE_refl_BGO3);
+                panel_OPTSURFACE_MPT_BGO3->AddProperty("SPECULARLOBECONSTANT", OPTSURFACE_Energy_BGO3, OPTSURFACE_SPECULARLOBECONSTANT_BGO3);
+                panel_OPTSURFACE_MPT_BGO3->AddProperty("SPECULARSPIKECONSTANT", OPTSURFACE_Energy_BGO3, OPTSURFACE_SPECULARSPIKECONSTANT_BGO3);
+                panel_OPTSURFACE_MPT_BGO3->AddProperty("BACKSCATTERCONSTANT", OPTSURFACE_Energy_BGO3, OPTSURFACE_BACKSCATTERCONSTANT_BGO3);
+                panel_OPTSURFACE_MPT_BGO3->AddProperty("RINDEX", OPTSURFACE_Energy_BGO3, OPTSURFACE_RIND_BGO3);
+                panel_OPTSURFACE_MPT_BGO3->DumpTable();
+            }
+
+            if (setReflSurfaceType == 7) {
+                panel_OPTSURFACE_BGO3->SetModel(unified);
+                panel_OPTSURFACE_BGO3->SetType(dielectric_dielectric);
+
+                panel_OPTSURFACE_BGO3->SetFinish(polishedbackpainted);
+                panel_OPTSURFACE_BGO3->SetSigmaAlpha(1.3*degree);
+                
+                std::vector<G4double> OPTSURFACE_Energy_BGO3 = {1.547868 *eV, 1.569420 *eV, 1.593627 *eV, 1.618593 *eV, 1.631371 *eV, 1.657543 *eV, 1.696090 *eV, 1.748719 *eV, 1.789094 *eV, 1.850510 *eV, 1.919260 *eV, 1.990116 *eV, 2.066403 *eV, 2.137659 *eV, 2.206125 *eV, 2.270773 *eV, 2.352641 *eV, 2.455133 *eV, 2.561657 *eV, 2.637962 *eV, 2.736958 *eV, 2.843674 *eV, 3.002039 *eV, 3.107373 *eV, 3.162862 *eV, 3.195469 *eV, 3.212026 *eV, 3.220369 *eV, 3.245660 *eV, 3.254178 *eV, 3.280005 *eV, 3.315086 *eV, 3.415543 *eV, 3.492513 *eV, 3.573032 *eV, 3.657351 *eV, 3.745746 *eV, 3.948541 *eV, 4.146629 *eV, 4.381067 *eV, 4.558243 *eV, 4.714228 *eV, 4.959368 *eV};
+                std::vector<G4double> OPTSURFACE_refl_BGO3 = {0.999, 0.999, 0.996, 0.994, 0.985, 0.988, 0.990, 0.985, 0.987, 0.978, 0.970, 0.973, 0.975, 0.976, 0.982, 0.987, 0.990, 0.993, 0.997, 0.996, 0.984, 0.990, 0.985, 0.953, 0.870, 0.762, 0.657, 0.533, 0.392, 0.274, 0.157, 0.124, 0.124, 0.102, 0.0991, 0.0902, 0.0873, 0.0710, 0.0385, 0.0592, 0.0843, 0.123, 0.149}; // Janecek 2012
+                std::vector<G4double> OPTSURFACE_SPECULARLOBECONSTANT_BGO3 = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+                std::vector<G4double> OPTSURFACE_SPECULARSPIKECONSTANT_BGO3 = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+                std::vector<G4double> OPTSURFACE_BACKSCATTERCONSTANT_BGO3 = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+                std::vector<G4double> OPTSURFACE_RIND_BGO3 = { 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293};
+            
+                panel_OPTSURFACE_MPT_BGO3->AddProperty("REFLECTIVITY", OPTSURFACE_Energy_BGO3, OPTSURFACE_refl_BGO3);
+                panel_OPTSURFACE_MPT_BGO3->AddProperty("SPECULARLOBECONSTANT", OPTSURFACE_Energy_BGO3, OPTSURFACE_SPECULARLOBECONSTANT_BGO3);
+                panel_OPTSURFACE_MPT_BGO3->AddProperty("SPECULARSPIKECONSTANT", OPTSURFACE_Energy_BGO3, OPTSURFACE_SPECULARSPIKECONSTANT_BGO3);
+                panel_OPTSURFACE_MPT_BGO3->AddProperty("BACKSCATTERCONSTANT", OPTSURFACE_Energy_BGO3, OPTSURFACE_BACKSCATTERCONSTANT_BGO3);
+                panel_OPTSURFACE_MPT_BGO3->AddProperty("RINDEX", OPTSURFACE_Energy_BGO3, OPTSURFACE_RIND_BGO3);
+                panel_OPTSURFACE_MPT_BGO3->DumpTable();
+            }
+
+            if (setReflSurfaceType == 8) {
+                panel_OPTSURFACE_BGO3->SetModel(unified);
+                panel_OPTSURFACE_BGO3->SetType(dielectric_dielectric);
+
+                panel_OPTSURFACE_BGO3->SetFinish(polishedbackpainted);
+                panel_OPTSURFACE_BGO3->SetSigmaAlpha(2*degree);
+                
+                std::vector<G4double> OPTSURFACE_Energy_BGO3 = {1.547868 *eV, 1.569420 *eV, 1.593627 *eV, 1.618593 *eV, 1.631371 *eV, 1.657543 *eV, 1.696090 *eV, 1.748719 *eV, 1.789094 *eV, 1.850510 *eV, 1.919260 *eV, 1.990116 *eV, 2.066403 *eV, 2.137659 *eV, 2.206125 *eV, 2.270773 *eV, 2.352641 *eV, 2.455133 *eV, 2.561657 *eV, 2.637962 *eV, 2.736958 *eV, 2.843674 *eV, 3.002039 *eV, 3.107373 *eV, 3.162862 *eV, 3.195469 *eV, 3.212026 *eV, 3.220369 *eV, 3.245660 *eV, 3.254178 *eV, 3.280005 *eV, 3.315086 *eV, 3.415543 *eV, 3.492513 *eV, 3.573032 *eV, 3.657351 *eV, 3.745746 *eV, 3.948541 *eV, 4.146629 *eV, 4.381067 *eV, 4.558243 *eV, 4.714228 *eV, 4.959368 *eV};
+                std::vector<G4double> OPTSURFACE_refl_BGO3 = {0.999, 0.999, 0.996, 0.994, 0.985, 0.988, 0.990, 0.985, 0.987, 0.978, 0.970, 0.973, 0.975, 0.976, 0.982, 0.987, 0.990, 0.993, 0.997, 0.996, 0.984, 0.990, 0.985, 0.953, 0.870, 0.762, 0.657, 0.533, 0.392, 0.274, 0.157, 0.124, 0.124, 0.102, 0.0991, 0.0902, 0.0873, 0.0710, 0.0385, 0.0592, 0.0843, 0.123, 0.149}; // Janecek 2012
+                std::vector<G4double> OPTSURFACE_SPECULARLOBECONSTANT_BGO3 = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+                std::vector<G4double> OPTSURFACE_SPECULARSPIKECONSTANT_BGO3 = { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 };
+                std::vector<G4double> OPTSURFACE_BACKSCATTERCONSTANT_BGO3 = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+                std::vector<G4double> OPTSURFACE_RIND_BGO3 = { 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293};
+            
+                panel_OPTSURFACE_MPT_BGO3->AddProperty("REFLECTIVITY", OPTSURFACE_Energy_BGO3, OPTSURFACE_refl_BGO3);
+                panel_OPTSURFACE_MPT_BGO3->AddProperty("SPECULARLOBECONSTANT", OPTSURFACE_Energy_BGO3, OPTSURFACE_SPECULARLOBECONSTANT_BGO3);
+                panel_OPTSURFACE_MPT_BGO3->AddProperty("SPECULARSPIKECONSTANT", OPTSURFACE_Energy_BGO3, OPTSURFACE_SPECULARSPIKECONSTANT_BGO3);
+                panel_OPTSURFACE_MPT_BGO3->AddProperty("BACKSCATTERCONSTANT", OPTSURFACE_Energy_BGO3, OPTSURFACE_BACKSCATTERCONSTANT_BGO3);
+                panel_OPTSURFACE_MPT_BGO3->AddProperty("RINDEX", OPTSURFACE_Energy_BGO3, OPTSURFACE_RIND_BGO3);
+                panel_OPTSURFACE_MPT_BGO3->DumpTable();
+            }
+            if (setReflSurfaceType == 9) {
+                panel_OPTSURFACE_BGO3->SetModel(unified);
+                panel_OPTSURFACE_BGO3->SetType(dielectric_dielectric);
+
+                panel_OPTSURFACE_BGO3->SetFinish(polishedbackpainted);
+                panel_OPTSURFACE_BGO3->SetSigmaAlpha(1.3*degree);
+                
+                std::vector<G4double> OPTSURFACE_Energy_BGO3 = {1.547868 *eV, 1.569420 *eV, 1.593627 *eV, 1.618593 *eV, 1.631371 *eV, 1.657543 *eV, 1.696090 *eV, 1.748719 *eV, 1.789094 *eV, 1.850510 *eV, 1.919260 *eV, 1.990116 *eV, 2.066403 *eV, 2.137659 *eV, 2.206125 *eV, 2.270773 *eV, 2.352641 *eV, 2.455133 *eV, 2.561657 *eV, 2.637962 *eV, 2.736958 *eV, 2.843674 *eV, 3.002039 *eV, 3.107373 *eV, 3.162862 *eV, 3.195469 *eV, 3.212026 *eV, 3.220369 *eV, 3.245660 *eV, 3.254178 *eV, 3.280005 *eV, 3.315086 *eV, 3.415543 *eV, 3.492513 *eV, 3.573032 *eV, 3.657351 *eV, 3.745746 *eV, 3.948541 *eV, 4.146629 *eV, 4.381067 *eV, 4.558243 *eV, 4.714228 *eV, 4.959368 *eV};
+                std::vector<G4double> OPTSURFACE_refl_BGO3 = {0.999, 0.999, 0.996, 0.994, 0.985, 0.988, 0.990, 0.985, 0.987, 0.978, 0.970, 0.973, 0.975, 0.976, 0.982, 0.987, 0.990, 0.993, 0.997, 0.996, 0.984, 0.990, 0.985, 0.953, 0.870, 0.762, 0.657, 0.533, 0.392, 0.274, 0.157, 0.124, 0.124, 0.102, 0.0991, 0.0902, 0.0873, 0.0710, 0.0385, 0.0592, 0.0843, 0.123, 0.149}; // Janecek 2012
+                std::vector<G4double> OPTSURFACE_SPECULARLOBECONSTANT_BGO3 = { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 };
+                std::vector<G4double> OPTSURFACE_SPECULARSPIKECONSTANT_BGO3 = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+                std::vector<G4double> OPTSURFACE_BACKSCATTERCONSTANT_BGO3 = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+                std::vector<G4double> OPTSURFACE_RIND_BGO3 = { 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293};
+            
+                panel_OPTSURFACE_MPT_BGO3->AddProperty("REFLECTIVITY", OPTSURFACE_Energy_BGO3, OPTSURFACE_refl_BGO3);
+                panel_OPTSURFACE_MPT_BGO3->AddProperty("SPECULARLOBECONSTANT", OPTSURFACE_Energy_BGO3, OPTSURFACE_SPECULARLOBECONSTANT_BGO3);
+                panel_OPTSURFACE_MPT_BGO3->AddProperty("SPECULARSPIKECONSTANT", OPTSURFACE_Energy_BGO3, OPTSURFACE_SPECULARSPIKECONSTANT_BGO3);
+                panel_OPTSURFACE_MPT_BGO3->AddProperty("BACKSCATTERCONSTANT", OPTSURFACE_Energy_BGO3, OPTSURFACE_BACKSCATTERCONSTANT_BGO3);
+                panel_OPTSURFACE_MPT_BGO3->AddProperty("RINDEX", OPTSURFACE_Energy_BGO3, OPTSURFACE_RIND_BGO3);
+                panel_OPTSURFACE_MPT_BGO3->DumpTable();
+            }
             panel_OPTSURFACE_BGO3->SetMaterialPropertiesTable(panel_OPTSURFACE_MPT_BGO3);
 
             /* BGO3 -> Tetratex (SiPM face) */
@@ -3253,6 +4458,62 @@ G4VPhysicalVolume* GeometryCOSI_EMXwall::ConstructGeometry(G4VPhysicalVolume* Wo
 
             G4MaterialPropertiesTable* panel_OPTSURFACE2_MPT_BGO3 = new G4MaterialPropertiesTable();
             
+            if (setReflSurface2Type == 1) {
+                panel_OPTSURFACE2_BGO3->SetModel(unified);
+                panel_OPTSURFACE2_BGO3->SetType(dielectric_dielectric);
+
+                panel_OPTSURFACE2_BGO3->SetFinish(polishedbackpainted);
+                panel_OPTSURFACE2_BGO3->SetSigmaAlpha(1.3*degree);
+                
+                std::vector<G4double> OPTSURFACE2_Energy_BGO3 = {1.573404*eV, 1.637836*eV, 1.736473*eV, 1.881399*eV, 2.029201*eV, 2.270773*eV, 2.610194*eV, 2.917275*eV, 3.195469*eV, 3.350924*eV, 3.562764*eV, 3.838520*eV, 4.146629*eV, 4.320007*eV, 4.524971*eV, 4.696371*eV, 4.939609*eV};
+                std::vector<G4double> OPTSURFACE2_refl_BGO3 = {0.870, 0.881, 0.891, 0.906, 0.916, 0.928, 0.937, 0.946, 0.954, 0.957, 0.958, 0.963, 0.964, 0.969, 0.969, 0.963, 0.972}; // Janecek 2012
+                std::vector<G4double> OPTSURFACE2_SPECULARLOBECONSTANT_BGO3 = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+                std::vector<G4double> OPTSURFACE2_SPECULARSPIKECONSTANT_BGO3 = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+                std::vector<G4double> OPTSURFACE2_BACKSCATTERCONSTANT_BGO3 = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+                std::vector<G4double> OPTSURFACE2_RIND_BGO3 = { 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293};
+            
+                panel_OPTSURFACE2_MPT_BGO3->AddProperty("REFLECTIVITY", OPTSURFACE2_Energy_BGO3, OPTSURFACE2_refl_BGO3);
+                panel_OPTSURFACE2_MPT_BGO3->AddProperty("SPECULARLOBECONSTANT", OPTSURFACE2_Energy_BGO3, OPTSURFACE2_SPECULARLOBECONSTANT_BGO3);
+                panel_OPTSURFACE2_MPT_BGO3->AddProperty("SPECULARSPIKECONSTANT", OPTSURFACE2_Energy_BGO3, OPTSURFACE2_SPECULARSPIKECONSTANT_BGO3);
+                panel_OPTSURFACE2_MPT_BGO3->AddProperty("BACKSCATTERCONSTANT", OPTSURFACE2_Energy_BGO3, OPTSURFACE2_BACKSCATTERCONSTANT_BGO3);
+                panel_OPTSURFACE2_MPT_BGO3->AddProperty("RINDEX", OPTSURFACE2_Energy_BGO3, OPTSURFACE2_RIND_BGO3);
+                panel_OPTSURFACE2_MPT_BGO3->DumpTable();
+            }
+
+            if (setReflSurface2Type == 2) {
+                panel_OPTSURFACE2_BGO3->SetModel(unified);
+                panel_OPTSURFACE2_BGO3->SetType(dielectric_dielectric);
+
+                panel_OPTSURFACE2_BGO3->SetFinish(polishedbackpainted);
+                panel_OPTSURFACE2_BGO3->SetSigmaAlpha(1.3*degree);
+                
+                std::vector<G4double> OPTSURFACE2_Energy_BGO3 = {1.573404*eV, 1.637836*eV, 1.736473*eV, 1.881399*eV, 2.029201*eV, 2.270773*eV, 2.610194*eV, 2.917275*eV, 3.195469*eV, 3.350924*eV, 3.562764*eV, 3.838520*eV, 4.146629*eV, 4.320007*eV, 4.524971*eV, 4.696371*eV, 4.939609*eV};
+                std::vector<G4double> OPTSURFACE2_refl_BGO3 = {0.870, 0.881, 0.891, 0.906, 0.916, 0.928, 0.937, 0.946, 0.954, 0.957, 0.958, 0.963, 0.964, 0.969, 0.969, 0.963, 0.972}; // Janecek 2012
+                std::vector<G4double> OPTSURFACE2_SPECULARLOBECONSTANT_BGO3 = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+                std::vector<G4double> OPTSURFACE2_SPECULARSPIKECONSTANT_BGO3 = { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 };
+                std::vector<G4double> OPTSURFACE2_BACKSCATTERCONSTANT_BGO3 = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+                std::vector<G4double> OPTSURFACE2_RIND_BGO3 = { 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293, 1.00293};
+            
+                panel_OPTSURFACE2_MPT_BGO3->AddProperty("REFLECTIVITY", OPTSURFACE2_Energy_BGO3, OPTSURFACE2_refl_BGO3);
+                panel_OPTSURFACE2_MPT_BGO3->AddProperty("SPECULARLOBECONSTANT", OPTSURFACE2_Energy_BGO3, OPTSURFACE2_SPECULARLOBECONSTANT_BGO3);
+                panel_OPTSURFACE2_MPT_BGO3->AddProperty("SPECULARSPIKECONSTANT", OPTSURFACE2_Energy_BGO3, OPTSURFACE2_SPECULARSPIKECONSTANT_BGO3);
+                panel_OPTSURFACE2_MPT_BGO3->AddProperty("BACKSCATTERCONSTANT", OPTSURFACE2_Energy_BGO3, OPTSURFACE2_BACKSCATTERCONSTANT_BGO3);
+                panel_OPTSURFACE2_MPT_BGO3->AddProperty("RINDEX", OPTSURFACE2_Energy_BGO3, OPTSURFACE2_RIND_BGO3);
+                panel_OPTSURFACE2_MPT_BGO3->DumpTable();
+            }
+            if (setReflSurface2Type == 3) {
+                panel_OPTSURFACE2_BGO3->SetModel(unified);
+                panel_OPTSURFACE2_BGO3->SetType(dielectric_dielectric);
+
+                panel_OPTSURFACE2_BGO3->SetFinish(groundfrontpainted);
+                
+                std::vector<G4double> OPTSURFACE2_Energy_BGO3 = {1.573404*eV, 1.637836*eV, 1.736473*eV, 1.881399*eV, 2.029201*eV, 2.270773*eV, 2.610194*eV, 2.917275*eV, 3.195469*eV, 3.350924*eV, 3.562764*eV, 3.838520*eV, 4.146629*eV, 4.320007*eV, 4.524971*eV, 4.696371*eV, 4.939609*eV};
+                std::vector<G4double> OPTSURFACE2_refl_BGO3 = {0.870, 0.881, 0.891, 0.906, 0.916, 0.928, 0.937, 0.946, 0.954, 0.957, 0.958, 0.963, 0.964, 0.969, 0.969, 0.963, 0.972}; // Janecek 2012
+
+            
+                panel_OPTSURFACE2_MPT_BGO3->AddProperty("REFLECTIVITY", OPTSURFACE2_Energy_BGO3, OPTSURFACE2_refl_BGO3);
+                panel_OPTSURFACE2_MPT_BGO3->DumpTable();
+            }
             if (setReflSurface2Type == 4) {
                 panel_OPTSURFACE2_BGO3->SetModel(unified);
                 panel_OPTSURFACE2_BGO3->SetType(dielectric_dielectric);
