@@ -131,4 +131,8 @@ cd "${COSI_ACS_DEE_DIR}"
 
 echo
 echo "${BOGEMMS_REPO_NAME} successfully built."
+
+# --- BoGEMMS runtime (will be overridden by project build if needed) ---
+export PATH="$PATH:$BOGEMMS_BUILD_DIR"
+
 echo "Setup completed."

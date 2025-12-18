@@ -7,15 +7,13 @@
  email                : alex.ciabattoni@inaf.it
  ----------------------------------------------
  Usage:
- python filterACS.py PATH_SIM run_start run_stop N_beams
+ python filterACS.py run_start run_stop
  example:
- python filterACS.py ../Simulations/SIM_DIR/10000/122keV/ 1 1 12
+ python filterACS.py 1 1 
  ---------------------------------------------------------------------------------
  Parameters:
- - PATH_SIM  = path where the BoGEMMS simulation runs are stored
  - run_start = initial run number
- - run_start = initial run number
- - N_beams   = number of beams
+ - run_stop = initial run number
  --------------------------------------------------------------------------------
  Caveats:
  None
@@ -45,13 +43,13 @@ from astropy.table import Table, Column
 import glob
 
 # Help
-if len(sys.argv) != 4:
+if len(sys.argv) != 3:
 	print("n")
 	print(" filterACS.py  -  description\n")
 	print(" ----------------------------------------------------------\n")
 	print(" Usage:\n\tpython filterACS.py PATH_SIM run_start run_stop\n example:\n\tpython filterACS.py ../Simulations/SIM_DIR/10000/122keV/ 1 1\n")
 	print(" ----------------------------------------------------------\n")
-	print(" Parameters:\n\t- PATH_SIM = path where the BoGEMMS simulation runs are stored\n")
+	print(" Parameters:\n")
 	print(" \t- run_start = initial run number\n")
 	print(" \t- run_start = final run number\n")
 	print("\n")
@@ -59,13 +57,14 @@ if len(sys.argv) != 4:
 
 # Import line command parameters
 arg_list = sys.argv
-PATH_SIM = arg_list[1]
-run_start = int(arg_list[2])
-run_stop = int(arg_list[3])
+run_start = int(arg_list[1])
+run_stop = int(arg_list[2])
+
+cosi_acs_dee_repo = os.getenv("COSI_ACS_DEE_DIR")
 
 # Read input parameters from config file
 input_params = []
-file_input = PATH_SIM + "/run" + str(run_start) + "/runSiPM.txt"
+file_input = cosi_acs_dee_repo+"/benchmarking/sim_and_analysis/SSL/Simulations/runSiPM.txt"
 with open(file_input, "r") as f_in:
 	for line in f_in:
 		line = line.strip()
@@ -88,8 +87,12 @@ num_threads = int(input_params[13])
 num_tasks = int(input_params[14])
 
 N_runs = run_stop - run_start + 1
+ang_type = "not_collimated"
+refl2_dir = "/REFL2_TYPE" + str(refl2_type)
 source_dir = source
 Ene_dir = ""
+
+PATH_SIM = G4PATH+"/SIM"+str(sim_id)+"/GEOM_TYPE"+str(geom_type)+"/BGO_ABSL_TYPE"+str(bgo_absl_type)+"/REFL_TYPE"+str(refl_type)+refl2_dir+"/"+str(N_in)+"/"+source_dir+"/"+ang_type
 
 # Volume IDs
 scint_copyno = 15
@@ -122,12 +125,13 @@ refl2_dir = "/REFL2_TYPE" + str(refl2_type)
 
 path_output = "."+"/SIM"+str(sim_id)+"/GEOM_TYPE"+str(geom_type)+"/BGO_ABSL_TYPE"+str(bgo_absl_type)+"/REFL_TYPE"+str(refl_type)+refl2_dir+"/"+str(N_tot)+"/"+source_dir+"/not_collimated/"+str(run_start)+"-"+str(run_stop)+"/"
 path_runs = "."+"/SIM"+str(sim_id)+"/GEOM_TYPE"+str(geom_type)+"/BGO_ABSL_TYPE"+str(bgo_absl_type)+"/REFL_TYPE"+str(refl_type)+refl2_dir+"/"+str(N_tot)+"/"+source_dir+"/not_collimated/"
+
 if os.path.exists(path_runs): shutil.rmtree(path_runs)
 
 # PDE
 wl = []
 pde = []
-with open("SiPM_PDE.txt", "r") as f:
+with open(cosi_acs_dee_repo+"/acs_detector_params/SiPM_PDE.txt", "r") as f:
 	for line in f:
 		line = line.strip()
 		if not line.startswith("#"):
@@ -140,10 +144,9 @@ f = interp1d(wl, pde)
 
 for jrun in range(run_start, run_stop + 1):
 	rundir = "/run"+str(jrun)
-	N_tasks = len(glob.glob1(path_sim+rundir,"*0.task*.fits*"))
-	N_in_per_task = int(N_in / N_tasks) # number of events per task
+	N_in_per_task = int(N_in / num_tasks) # number of events per task
 
-	for task in range(N_tasks):
+	for task in range(num_tasks):
 		N_fits = len(glob.glob1(path_sim+rundir,"*.task"+str(task)+".fits.gz"))
 
 		for jfits in range(N_fits):
@@ -369,6 +372,6 @@ f_out.close()
 # Copy config file
 if not os.path.exists(path_output+"/config"):
 	os.makedirs(path_output+"/config")
-subprocess.call(["cp", "./"+file_input, path_output+"/config/."])
+subprocess.call(["cp", file_input, path_output+"/config/."])
 
 plt.show()

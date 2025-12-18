@@ -14,6 +14,5 @@
 /gps/energy 0. keV
 
 # Set number of particles and start
-#/random/resetEngineFrom currentEvent.rndm
 /run/beamOn 25000
-/random/saveThisRun
+
