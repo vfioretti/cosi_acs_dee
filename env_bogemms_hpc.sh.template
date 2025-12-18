@@ -1,0 +1,31 @@
+# ============================================================
+# BoGEMMS-HPC dependencies environment
+# ============================================================
+
+
+#### Building  on local environment (no Linux container)
+
+# --- Geant4 11.1 ---
+export G4_INSTALL="path-to-install"
+. "$G4_INSTALL/bin/geant4.sh"
+
+# --- CFITSIO ---
+export DYLD_LIBRARY_PATH="path-to-cfitsio-lib:${DYLD_LIBRARY_PATH}"
+export LD_LIBRARY_PATH="path-to-cfitsio-lib:${LD_LIBRARY_PATH}"
+
+# --- OpenMPI ---
+export PATH="$PATH:path-to-openmpi-bin"
+
+# --- Geant4 libraries ---
+export DYLD_LIBRARY_PATH="$G4INSTALL/lib:${DYLD_LIBRARY_PATH}"
+export LD_LIBRARY_PATH="$G4INSTALL/lib:${LD_LIBRARY_PATH}"
+
+
+### Building using BoGEMMS-HPC singularity container
+
+# --- Geant4 11.1 ---
+. "$G4_INSTALL/bin/geant4.sh"
+
+export LD_LIBRARY_PATH="$G4_INSTALL/lib:${LD_LIBRARY_PATH}"
+
+export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
