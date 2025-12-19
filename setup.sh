@@ -129,10 +129,25 @@ make -j"${NPROC}" || {
 
 cd "${COSI_ACS_DEE_DIR}"
 
+# ============================================================
+# Add CAD files into BoGEMMS-HPC (non-destructive)
+# ============================================================
+
+CAD_SRC_DIR="${COSI_ACS_DEE_DIR}/cad_files"
+CAD_DST_DIR="${BOGEMMS_REPO_DIR}/cad_files"
+
+if [[ ! -d "${CAD_SRC_DIR}" ]]; then
+    echo "WARNING: CAD source directory not found:"
+    echo "         ${CAD_SRC_DIR}"
+else
+    rsync -av --ignore-existing "${CAD_SRC_DIR}/" "${CAD_DST_DIR}/"
+fi
+
 echo
 echo "${BOGEMMS_REPO_NAME} successfully built."
 
-# --- BoGEMMS runtime (will be overridden by project build if needed) ---
+# --- exporting PATH ---
 export PATH="$PATH:$BOGEMMS_BUILD_DIR"
+
 
 echo "Setup completed."
