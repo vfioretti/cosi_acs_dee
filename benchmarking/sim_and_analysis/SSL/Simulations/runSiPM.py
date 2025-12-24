@@ -166,7 +166,7 @@ for jrun in range(run_start, run_stop + 1):
             if line.startswith('GEOM.COSI.IS.CASING'):
                 list_of_lines[l] = 'GEOM.COSI.IS.CASING = '+str(is_casing)+'\n'    
             if line.startswith('GEOM.CAD.PATH'):
-                list_of_lines[l] = 'GEOM.CAD.PATH = '+cosi_acs_dee_repo+"/benchmarking/sim_and_analysis/cad_files"+'\n' 
+                list_of_lines[l] = 'GEOM.CAD.PATH = '+cosi_acs_dee_repo+'/external/BoGEMMS-HPC/cad_files \n' 
             if (num_threads > 1):
                 if line.startswith('RUN.MT.ACTIVATE'): 
                     list_of_lines[l] = 'RUN.MT.ACTIVATE = 1\n'
