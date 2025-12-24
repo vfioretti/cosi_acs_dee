@@ -141,7 +141,7 @@ for jrun in range(run_start, run_stop + 1):
         subprocess.call(["cp", working_dir+'/'+file_input, rundir])
         
         if ismorgana: 
-            subprocess.call(["cp", G4PATH+'/bogemms_container.slurm', rundir])
+            subprocess.call(["cp", working_dir+'/bogemms_container.slurm', rundir])
 
         # changing dir to the G4 run
 
