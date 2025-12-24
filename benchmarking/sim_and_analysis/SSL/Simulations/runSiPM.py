@@ -214,8 +214,7 @@ for jrun in range(run_start, run_stop + 1):
                     else:
                         list_of_lines[l] = 'singularity exec --bind=/blasco /home/fioretti/MOON/g4_11_1_HPC_v2.sif \
                                            bash -c "source '+cosi_acs_dee_repo+'/setup.sh && \
-                                        '+cosi_acs_dee_repo+'/external/BoGEMMS-HPC-build/bogemms
-                                        -c '+path_sim_main+'/'+rundir+'/'+file_conf+' -m '+path_sim_main+'/'+rundir+'/'+file_mac+'"\n'
+                                        '+cosi_acs_dee_repo+'/external/BoGEMMS-HPC-build/bogemms -c '+path_sim_main+'/'+rundir+'/'+file_conf+' -m '+path_sim_main+'/'+rundir+'/'+file_mac+'"\n'
                 l = l + 1
             f = open("bogemms_container.slurm", "w")
             f.writelines(list_of_lines)
