@@ -210,11 +210,11 @@ for jrun in range(run_start, run_stop + 1):
                     list_of_lines[l] = '#SBATCH --job-name='+job_name+'\n'
                 if line.startswith('singularity exec'):
                     if (num_tasks > 1):
-                        list_of_lines[l] = 'singularity exec --bind=/blasco /home/ciabattoni/containers/g4_11_1_HPC.sif mpiexec -n '+str(num_tasks)+' /home/ciabattoni/ICSC_G4_HPC/BoGEMMS-HPC/BoGEMMS-HPC-build/bogemms '+file_conf+' 0 '+file_mac+'\n'
+                        list_of_lines[l] = 'singularity exec --bind=/blasco /home/fioretti/MOON/g4_11_1_HPC_v2.sif mpiexec -n '+str(num_tasks)+'  '+cosi_acs_dee_repo+'/external/BoGEMMS-HPC-build/bogemms '+file_conf+' 0 '+file_mac+'\n'
                     else:
-                        list_of_lines[l] = 'singularity exec --bind=/blasco /home/ciabattoni/containers/g4_11_1_HPC.sif /home/ciabattoni/ICSC_G4_HPC/BoGEMMS-HPC/BoGEMMS-HPC-build/bogemms '+file_conf+' 0 '+file_mac+'\n'
+                        list_of_lines[l] = 'singularity exec --bind=/blasco /home/fioretti/MOON/g4_11_1_HPC_v2.sif '+cosi_acs_dee_repo+'/external/BoGEMMS-HPC-build/bogemms '+file_conf+' 0 '+file_mac+'\n'
                 l = l + 1
-            f = open("thelsim_container.slurm", "w")
+            f = open("bogemms_container.slurm", "w")
             f.writelines(list_of_lines)
             f.close()
 
