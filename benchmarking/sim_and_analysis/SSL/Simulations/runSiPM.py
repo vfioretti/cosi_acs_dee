@@ -211,13 +211,13 @@ for jrun in range(run_start, run_stop + 1):
                 if line.startswith('singularity exec'):
                     if (num_tasks > 1):
                         list_of_lines[l] = 'singularity exec --bind=/blasco /home/fioretti/MOON/g4_11_1_HPC_v2.sif \
-                                           bash -c "source ${cosi_acs_dee_repo}/setup.sh && \
+                                           bash -c "source '+cosi_acs_dee_repo+'/setup.sh && \
                                            mpiexec -n ${num_tasks} \
                                         '+cosi_acs_dee_repo+'/external/BoGEMMS-HPC-build/bogemms \
                                         -c '+file_conf+' -m '+file_mac+'"\n'
                     else:
                         list_of_lines[l] = 'singularity exec --bind=/blasco /home/fioretti/MOON/g4_11_1_HPC_v2.sif \
-                                           bash -c "source ${cosi_acs_dee_repo}/setup.sh && \
+                                           bash -c "source '+cosi_acs_dee_repo+'/setup.sh && \
                                         '+cosi_acs_dee_repo+'/external/BoGEMMS-HPC-build/bogemms \
                                         -c '+file_conf+' -m '+file_mac+'"\n'
                 l = l + 1
