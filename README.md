@@ -12,6 +12,7 @@ cd cosi_acs_dee
 
 # copy and edit env_bogemms_hpc.sh depending on the environment
 cp env_bogemms_hpc.sh.template env_bogemms_hpc.sh
+source env_bogemms_hpc.sh
 
 # project setup (builds BoGEMMS with user classes)
 source setup.sh
