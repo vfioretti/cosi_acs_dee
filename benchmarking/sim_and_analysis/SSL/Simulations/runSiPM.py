@@ -62,11 +62,13 @@ refl_type = int(input_params[6])
 refl2_type = int(input_params[7]) # SiPM face
 N_in = int(input_params[8])
 source = input_params[9]
-ismorgana = int(input_params[10]) # 0: nohup, 1: slurm
+isslurm = int(input_params[10]) # 0: nohup, 1: slurm
 bias = input_params[11]
 job_name = input_params[12]
 num_threads = int(input_params[13])
 num_tasks = int(input_params[14])
+num_sockets = int(input_params[15])
+num_cores_per_socket = int(input_params[16])
 
 cosi_acs_dee_repo = os.getenv("COSI_ACS_DEE_DIR")
 if geom_type < 9:
@@ -140,7 +142,7 @@ for jrun in range(run_start, run_stop + 1):
         subprocess.call(["cp", working_dir+'/'+file_mac, rundir])
         subprocess.call(["cp", working_dir+'/'+file_input, rundir])
         
-        if ismorgana: 
+        if isslurm: 
             subprocess.call(["cp", working_dir+'/bogemms_container.slurm', rundir])
 
         # changing dir to the G4 run
@@ -189,38 +191,28 @@ for jrun in range(run_start, run_stop + 1):
         f.writelines(list_of_lines)
         f.close()
 
-        if ismorgana:
+        if isslurm:
+            container_path = input_params[17]
             f = open('bogemms_container.slurm', "r")
             list_of_lines = f.readlines()
-            if num_threads <= 10:
-                num_sockets = 1
-                num_cores_per_socket = num_threads
-            else:
-                num_sockets = 2
-                num_cores_per_socket = int(num_threads / 2)
             l = 0
             for line in list_of_lines:
-                if line.startswith('##SBATCH -n') and (num_tasks > 1):
+                if line.startswith('##SBATCH -n'):
                     list_of_lines[l] = '#SBATCH -n '+str(num_tasks)+'\n'
-                if line.startswith('##SBATCH --sockets') and (num_threads > 1):
+                if line.startswith('##SBATCH --sockets'):
                     list_of_lines[l] = '#SBATCH --sockets-per-node='+str(num_sockets)+'\n'
-                if line.startswith('##SBATCH --cores-per-socket') and (num_threads > 1):
+                if line.startswith('##SBATCH --cores-per-socket'):
                     list_of_lines[l] = '#SBATCH --cores-per-socket='+str(num_cores_per_socket)+'\n'
                 if line.startswith('#SBATCH --job-name'):
                     list_of_lines[l] = '#SBATCH --job-name='+job_name+'\n'
                 if line.startswith('singularity exec'):
-                    if (num_tasks > 1):
-                        list_of_lines[l] = 'singularity exec --bind=/blasco /home/fioretti/MOON/g4_11_1_HPC_v2.sif bash -c "source '+cosi_acs_dee_repo+'/setup.sh && mpiexec -n ${num_tasks} '+cosi_acs_dee_repo+'/external/BoGEMMS-HPC-build/bogemms -c '+path_sim_main+'/'+rundir+'/'+file_conf+' -m '+path_sim_main+'/'+rundir+'/'+file_mac+'"\n'
-                    else:
-                        list_of_lines[l] = 'singularity exec --bind=/blasco /home/fioretti/MOON/g4_11_1_HPC_v2.sif \
-                                           bash -c "source '+cosi_acs_dee_repo+'/setup.sh && \
-                                        '+cosi_acs_dee_repo+'/external/BoGEMMS-HPC-build/bogemms -c '+path_sim_main+'/'+rundir+'/'+file_conf+' -m '+path_sim_main+'/'+rundir+'/'+file_mac+'"\n'
+                    list_of_lines[l] = 'singularity exec --bind '+path_sim_main+'/'+rundir+':/work '+container_path+' bash -lc "cd /work && mpiexec -n ${num_tasks} bogemms -c '+file_conf+' -m '+file_mac+'"\n'
                 l = l + 1
             f = open("bogemms_container.slurm", "w")
             f.writelines(list_of_lines)
             f.close()
 
         print("... Running "+rundir)
-        #if ismorgana == 0: subprocess.Popen(["sh", "thelsim_container.sh", ">", "out.log"])    
-        if ismorgana == 0: subprocess.Popen(["bogemms", "-c", file_conf, "-m", file_mac])    
-        if ismorgana == 1: subprocess.Popen(["sbatch", "bogemms_container.slurm"])    
+        #if isslurm == 0: subprocess.Popen(["sh", "thelsim_container.sh", ">", "out.log"])    
+        if isslurm == 0: subprocess.Popen(["bogemms", "-c", file_conf, "-m", file_mac])    
+        if isslurm == 1: subprocess.Popen(["sbatch", "bogemms_container.slurm"])    

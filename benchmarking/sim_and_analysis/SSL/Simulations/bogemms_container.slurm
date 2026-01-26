@@ -16,11 +16,8 @@
 #SBATCH --err=run.err
 #SBATCH --out=run.out
 
-## [OPZIONALE] per attivare l'invio di e-mail alla fine del run, aggiungere allo script
-##SBATCH --mail-type=ALL
-##SBATCH --mail-user=alex.ciabattoni2@unibo.it
 
 
 date
  
-singularity exec --bind=/blasco /home/ciabattoni/containers/g4_11_1_HPC.sif mpiexec -n 1 /home/ciabattoni/ICSC_G4_HPC/BoGEMMS-HPC/BoGEMMS-HPC-build/bogemms SiPM.conf 0 Beam.mac
+singularity exec --bind=/blasco /home/fioretti/containers/g4_11_1_HPC.sif mpiexec -n 1 /home/ciabattoni/ICSC_G4_HPC/BoGEMMS-HPC/BoGEMMS-HPC-build/bogemms SiPM.conf 0 Beam.mac

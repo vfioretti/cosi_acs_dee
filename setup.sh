@@ -111,6 +111,7 @@ cd "${BOGEMMS_BUILD_DIR}" || return 1
 
 if [[ ! -f "Makefile" ]]; then
     cmake \
+        -DGeant4_DIR="${INSTALL_PREFIX}/geant4-v11-1.0-install/lib64/cmake/Geant4"  \
         -DUSER_CLASSES=ON \
         -DUSER_CLASSES_PATH="${BOGEMMS_USER_DIR}" \
         "${BOGEMMS_REPO_DIR}" || {
