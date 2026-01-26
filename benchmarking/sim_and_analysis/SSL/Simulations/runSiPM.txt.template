@@ -29,7 +29,7 @@ N_in = 1000
 source = Co60
 
 # Define how to run the simulation (0: nohup, 1: slurm)
-ismorgana = 0
+isslurm = 0
 
 # Define if a bias is present (left, right, forward or back) (only for collimated sources)
 bias =

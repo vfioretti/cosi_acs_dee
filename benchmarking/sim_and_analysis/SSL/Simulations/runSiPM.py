@@ -206,7 +206,7 @@ for jrun in range(run_start, run_stop + 1):
                 if line.startswith('#SBATCH --job-name'):
                     list_of_lines[l] = '#SBATCH --job-name='+job_name+'\n'
                 if line.startswith('singularity exec'):
-                    list_of_lines[l] = 'singularity exec --bind '+path_sim_main+'/'+rundir+':/work '+container_path+' bash -lc "cd /work && mpiexec -n ${num_tasks} bogemms -c '+file_conf+' -m '+file_mac+'"\n'
+                    list_of_lines[l] = 'singularity exec --bind '+path_sim_main+'/'+rundir+':/work '+container_path+' bash -lc "cd /work && mpiexec -n '+str(num_tasks)+' bogemms -c '+file_conf+' -m '+file_mac+'"\n'
                 l = l + 1
             f = open("bogemms_container.slurm", "w")
             f.writelines(list_of_lines)
