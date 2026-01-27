@@ -3,30 +3,35 @@
 
 ## Setup
 
+### clone project
 ```bash
-# clone project
 git clone https://github.com/vfioretti/cosi_acs_dee.git
 cd cosi_acs_dee
+```
 
-# copy and edit env_bogemms_hpc.sh depending if using local installation or the singularity container
+### copy and edit env_bogemms_hpc.sh depending if using local installation or the singularity container
+```bash
 cp env_bogemms_hpc.sh.template env_bogemms_hpc.sh
+```
+## Local installation
 
-### Local installation
-
+### Loading the environment
+```bash
 source env_bogemms_hpc.sh
-
-# project setup (builds BoGEMMS with user classes)
+```
+### project setup (builds BoGEMMS with user classes)
+```bash
 source setup.sh
-
+```
 The setup script also defines:
 
 - `COSI_ACS_DEE_DIR` – main repository directory
 - `BOGEMMS_USER_DIR` – user BoGEMMS classes (`bogemms_hpc_classes/`)
 
-### Using the container as toolchain for the BoGEMMS-HPC installation
-
+## Using the container as toolchain for the BoGEMMS-HPC installation
+```bash
 singularity shell g4_11_1_cosi.sif
 source env_bogemms_hpc.sh
 source setup.sh
-
+```
 Then exit container before running the simulations.
