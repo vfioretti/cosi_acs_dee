@@ -28,3 +28,5 @@ The setup script also defines:
 singularity shell g4_11_1_cosi.sif
 source env_bogemms_hpc.sh
 source setup.sh
+
+Then exit container before running the simulations.
