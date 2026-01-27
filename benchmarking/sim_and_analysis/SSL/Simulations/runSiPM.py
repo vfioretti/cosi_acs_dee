@@ -28,6 +28,7 @@ from datetime import date, datetime
 import shutil
 import random
 
+
 # Help
 if len(sys.argv) != 2:
     print("\n")
@@ -71,10 +72,7 @@ num_sockets = int(input_params[15])
 num_cores_per_socket = int(input_params[16])
 
 cosi_acs_dee_repo = os.getenv("COSI_ACS_DEE_DIR")
-if geom_type < 9:
-   working_dir = cosi_acs_dee_repo+"/benchmarking/sim_and_analysis/NRL/Simulations"
-if geom_type == 9:
-   working_dir = cosi_acs_dee_repo+"/benchmarking/sim_and_analysis/SSL/Simulations"
+working_dir = "./"
 
 N_runs = run_stop - run_start + 1
 
