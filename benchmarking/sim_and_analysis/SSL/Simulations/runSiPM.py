@@ -171,10 +171,10 @@ for jrun in range(run_start, run_stop + 1):
                 list_of_lines[l] = 'GEOM.COSI.IS.CASING = '+str(is_casing)+'\n'    
             if isslurm:
                if line.startswith('GEOM.CAD.PATH'):
-                   list_of_lines[l] = 'GEOM.CAD.PATH = /cad_files \n' 
+                   list_of_lines[l] = 'GEOM.CAD.PATH = /cosi_acs_dee/external/BoGEMMS-HPC/cad_files \n' 
             else:
                if line.startswith('GEOM.CAD.PATH'):
-                   list_of_lines[l] = 'GEOM.CAD.PATH = /cosi_acs_dee/external/BoGEMMS-HPC/cad_files \n' 
+                   list_of_lines[l] = 'GEOM.CAD.PATH = '+cosi_acs_dee_repo+'/external/BoGEMMS-HPC/cad_files \n' 
             if (num_threads > 1):
                 if line.startswith('RUN.MT.ACTIVATE'): 
                     list_of_lines[l] = 'RUN.MT.ACTIVATE = 1\n'
@@ -212,7 +212,7 @@ for jrun in range(run_start, run_stop + 1):
                 if line.startswith('#SBATCH --job-name'):
                     list_of_lines[l] = '#SBATCH --job-name='+job_name+'\n'
                 if line.startswith('singularity exec'):
-                    list_of_lines[l] = 'singularity exec --bind '+path_sim_main+'/'+rundir+':/work --bind '+cosi_acs_dee_repo+':/cosi_acs_dee '+container_path+' bash -lc "source /cosi_acs_dee/env_bogemms_hpc.sh && cd /work && mpiexec -n '+str(num_tasks)+' bogemms -c '+file_conf+' -m '+file_mac+'"\n'
+                    list_of_lines[l] = 'singularity exec --bind '+path_sim_main+'/'+rundir+':/work --bind '+cosi_acs_dee_repo+':/cosi_acs_dee '+container_path+' bash -lc "source /cosi_acs_dee/env_bogemms_hpc.sh && cd /work && mpiexec -n '+str(num_tasks)+' /cosi_acs_dee/external/BoGEMMS-HPC-build/bogemms -c '+file_conf+' -m '+file_mac+'"\n'
                 l = l + 1
             f = open("bogemms_container.slurm", "w")
             f.writelines(list_of_lines)

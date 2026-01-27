@@ -24,6 +24,7 @@ export LD_LIBRARY_PATH="$G4INSTALL/lib:${LD_LIBRARY_PATH}"
 ### Building using BoGEMMS-HPC singularity container
 
 # --- Geant4 11.1 ---
+export G4INSTALL="/SOFTWARE/geant4-v11-1.0-install"
 . "$G4INSTALL/bin/geant4.sh"
 
 export LD_LIBRARY_PATH="$G4INSTALL/lib:${LD_LIBRARY_PATH}"
