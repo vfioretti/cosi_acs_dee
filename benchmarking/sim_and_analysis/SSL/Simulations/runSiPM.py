@@ -72,7 +72,7 @@ num_tasks = int(input_params[15])
 num_sockets = int(input_params[16])
 num_cores_per_socket = int(input_params[17])
 
-cosi_acs_dee_repo = os.getenv("COSI_ACS_DEE_DIR")
+
 if geom_type < 9:
    working_dir = cosi_acs_dee_repo+"/benchmarking/sim_and_analysis/NRL/Simulations"
 if geom_type == 9:
