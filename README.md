@@ -1,5 +1,11 @@
 # COSI_ACS_DEE
 
+This repository collects all scripts and classes to build a Geant4 simulation of the COSI (https://cosi.ssl.berkeley.edu/) ACS crystals illuminated by calibration sources.
+The Geant4 simulation uses the BoGEMMS-HPC simulation framework and includes the optical physics to reproduce the generation of optical photons in the crystal. The goal is to benchmark the simulation by comparing it with the calibration measurements, and the build the energy correction file to be used in the Nuclearizer Detector Effect Engine.
+The repository also includes tools to analyse the calibration measurements and build the ADC-energy relation.
+
+## References
+- A. Ciabattoni et al. "Benchmarking of Geant4 simulations for the COSI Anticoincidence System", Exp. Astr. 60, 1, 2025
 
 ## Setup
 
