@@ -4,6 +4,9 @@
 run_start = 1
 run_stop = 1
 
+# Define the path of the main repository
+cosi_acs_dee_repo = 
+
 # Define the path where to create the working directory
 G4PATH = /Users/fioretti/mycosidir/BENCHMARKING/Simulations_XWall_SSL
 

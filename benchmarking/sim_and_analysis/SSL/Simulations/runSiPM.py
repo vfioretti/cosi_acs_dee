@@ -55,24 +55,28 @@ with open(file_input, "r") as f_in:
 
 run_start = int(input_params[0])
 run_stop = int(input_params[1])
-G4PATH = input_params[2]
-sim_id = int(input_params[3])
-geom_type = int(input_params[4])
-bgo_absl_type = int(input_params[5])
-refl_type = int(input_params[6])
-refl2_type = int(input_params[7]) # SiPM face
-N_in = int(input_params[8])
-source = input_params[9]
-isslurm = int(input_params[10]) # 0: nohup, 1: slurm
-bias = input_params[11]
-job_name = input_params[12]
-num_threads = int(input_params[13])
-num_tasks = int(input_params[14])
-num_sockets = int(input_params[15])
-num_cores_per_socket = int(input_params[16])
+cosi_acs_dee_repo = input_params[2]
+G4PATH = input_params[3]
+sim_id = int(input_params[4])
+geom_type = int(input_params[5])
+bgo_absl_type = int(input_params[6])
+refl_type = int(input_params[7])
+refl2_type = int(input_params[8]) # SiPM face
+N_in = int(input_params[9])
+source = input_params[10]
+isslurm = int(input_params[11]) # 0: nohup, 1: slurm
+bias = input_params[12]
+job_name = input_params[13]
+num_threads = int(input_params[14])
+num_tasks = int(input_params[15])
+num_sockets = int(input_params[16])
+num_cores_per_socket = int(input_params[17])
 
 cosi_acs_dee_repo = os.getenv("COSI_ACS_DEE_DIR")
-working_dir = "./"
+if geom_type < 9:
+   working_dir = cosi_acs_dee_repo+"/benchmarking/sim_and_analysis/NRL/Simulations"
+if geom_type == 9:
+   working_dir = cosi_acs_dee_repo+"/benchmarking/sim_and_analysis/SSL/Simulations"
 
 N_runs = run_stop - run_start + 1
 
@@ -165,8 +169,12 @@ for jrun in range(run_start, run_stop + 1):
                 list_of_lines[l] = 'PHYS.ACS.OPTSURFACE2.WRAPPER = '+str(refl2_type)+'\n'
             if line.startswith('GEOM.COSI.IS.CASING'):
                 list_of_lines[l] = 'GEOM.COSI.IS.CASING = '+str(is_casing)+'\n'    
-            if line.startswith('GEOM.CAD.PATH'):
-                list_of_lines[l] = 'GEOM.CAD.PATH = '+cosi_acs_dee_repo+'/external/BoGEMMS-HPC/cad_files \n' 
+            if isslurm:
+               if line.startswith('GEOM.CAD.PATH'):
+                   list_of_lines[l] = 'GEOM.CAD.PATH = /cad_files \n' 
+            else:
+               if line.startswith('GEOM.CAD.PATH'):
+                   list_of_lines[l] = 'GEOM.CAD.PATH = '+cosi_acs_dee_repo+'/external/BoGEMMS-HPC/cad_files \n' 
             if (num_threads > 1):
                 if line.startswith('RUN.MT.ACTIVATE'): 
                     list_of_lines[l] = 'RUN.MT.ACTIVATE = 1\n'
@@ -190,7 +198,7 @@ for jrun in range(run_start, run_stop + 1):
         f.close()
 
         if isslurm:
-            container_path = input_params[17]
+            container_path = input_params[18]
             f = open('bogemms_container.slurm', "r")
             list_of_lines = f.readlines()
             l = 0
@@ -204,7 +212,7 @@ for jrun in range(run_start, run_stop + 1):
                 if line.startswith('#SBATCH --job-name'):
                     list_of_lines[l] = '#SBATCH --job-name='+job_name+'\n'
                 if line.startswith('singularity exec'):
-                    list_of_lines[l] = 'singularity exec --bind '+path_sim_main+'/'+rundir+':/work '+container_path+' bash -lc "cd /work && mpiexec -n '+str(num_tasks)+' bogemms -c '+file_conf+' -m '+file_mac+'"\n'
+                    list_of_lines[l] = 'singularity exec --bind '+path_sim_main+'/'+rundir+':/work --bind '+cosi_acs_dee_repo+'/external/BoGEMMS-HPC/cad_files:/cad_files '+container_path+' bash -lc "cd /work && mpiexec -n '+str(num_tasks)+' bogemms -c '+file_conf+' -m '+file_mac+'"\n'
                 l = l + 1
             f = open("bogemms_container.slurm", "w")
             f.writelines(list_of_lines)
