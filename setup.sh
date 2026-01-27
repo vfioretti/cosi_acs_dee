@@ -6,13 +6,16 @@
 #     source setup.sh
 # ============================================================
 
-
 # --- Safety check: must be sourced ---
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
     echo "ERROR: This script must be sourced:"
     echo "  source setup.sh"
     return 1
 fi
+
+# --- Non-interactive mode (for SLURM / container exec) ---
+# If SETUP_NON_INTERACTIVE=1, any prompt will default to "No".
+SETUP_NON_INTERACTIVE="${SETUP_NON_INTERACTIVE:-0}"
 
 # --- Determine number of parallel build jobs ---
 if command -v nproc >/dev/null 2>&1; then
@@ -22,18 +25,15 @@ elif command -v sysctl >/dev/null 2>&1; then
 else
     NPROC=1
 fi
-
 echo "Using ${NPROC} parallel build jobs"
 
 # --- Determine main directory ---
 export COSI_ACS_DEE_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-
 echo "COSI_ACS_DEE_DIR set to:"
 echo "  ${COSI_ACS_DEE_DIR}"
 
 # --- BoGEMMS user classes directory ---
 export BOGEMMS_USER_DIR="${COSI_ACS_DEE_DIR}/bogemms_hpc_classes"
-
 echo "BOGEMMS_USER_DIR set to:"
 echo "  ${BOGEMMS_USER_DIR}"
 
@@ -60,7 +60,6 @@ else
     echo "         BoGEMMS-HPC dependencies may not be set"
 fi
 
-
 # ============================================================
 # External dependency
 # ============================================================
@@ -79,7 +78,13 @@ if [[ ! -d "${BOGEMMS_REPO_DIR}" ]]; then
     echo "Required BoGEMMS-HPC repository not found:"
     echo "  ${BOGEMMS_REPO_NAME}"
     echo
-    read -p "Do you want to clone and build it now? [y/N] " answer
+
+    if [[ "${SETUP_NON_INTERACTIVE}" == "1" ]]; then
+        answer="N"
+        echo "Non-interactive mode: defaulting to 'No' (skip clone/build)."
+    else
+        read -p "Do you want to clone and build it now? [y/N] " answer
+    fi
 
     case "$answer" in
         y|Y )
@@ -100,6 +105,67 @@ else
 fi
 
 # ============================================================
+# Helper: infer Geant4_DIR robustly
+# ============================================================
+
+infer_geant4_dir() {
+    # If Geant4_DIR already set and valid, keep it
+    if [[ -n "${Geant4_DIR:-}" && -d "${Geant4_DIR}" ]]; then
+        echo "${Geant4_DIR}"
+        return 0
+    fi
+
+    # Try from G4INSTALL
+    if [[ -n "${G4INSTALL:-}" ]]; then
+        if [[ -d "${G4INSTALL}/lib/cmake/Geant4" ]]; then
+            echo "${G4INSTALL}/lib/cmake/Geant4"
+            return 0
+        fi
+        if [[ -d "${G4INSTALL}/lib64/cmake/Geant4" ]]; then
+            echo "${G4INSTALL}/lib64/cmake/Geant4"
+            return 0
+        fi
+    fi
+
+    # Try from INSTALL_PREFIX (container toolchain)
+    if [[ -n "${INSTALL_PREFIX:-}" ]]; then
+        if [[ -d "${INSTALL_PREFIX}/geant4-v11-1.0-install/lib/cmake/Geant4" ]]; then
+            echo "${INSTALL_PREFIX}/geant4-v11-1.0-install/lib/cmake/Geant4"
+            return 0
+        fi
+        if [[ -d "${INSTALL_PREFIX}/geant4-v11-1.0-install/lib64/cmake/Geant4" ]]; then
+            echo "${INSTALL_PREFIX}/geant4-v11-1.0-install/lib64/cmake/Geant4"
+            return 0
+        fi
+    fi
+
+    return 1
+}
+
+Geant4_DIR_INFERRED="$(infer_geant4_dir || true)"
+if [[ -z "${Geant4_DIR_INFERRED}" ]]; then
+    echo "ERROR: Could not infer Geant4_DIR."
+    echo "       Please set Geant4_DIR (or G4INSTALL) before sourcing setup.sh."
+    echo "       Examples:"
+    echo "         export Geant4_DIR=/SOFTWARE/geant4-v11-1.0-install/lib/cmake/Geant4"
+    echo "         export G4INSTALL=/SOFTWARE/geant4-v11-1.0-install"
+    return 1
+fi
+export Geant4_DIR="${Geant4_DIR_INFERRED}"
+echo "Geant4_DIR set to:"
+echo "  ${Geant4_DIR}"
+
+# Optional: ensure Geant4 runtime libs are in LD_LIBRARY_PATH (Linux)
+if [[ -n "${G4INSTALL:-}" ]]; then
+    if [[ -d "${G4INSTALL}/lib" && ":${LD_LIBRARY_PATH:-}:" != *":${G4INSTALL}/lib:"* ]]; then
+        export LD_LIBRARY_PATH="${G4INSTALL}/lib:${LD_LIBRARY_PATH:-}"
+    fi
+    if [[ -d "${G4INSTALL}/lib64" && ":${LD_LIBRARY_PATH:-}:" != *":${G4INSTALL}/lib64:"* ]]; then
+        export LD_LIBRARY_PATH="${G4INSTALL}/lib64:${LD_LIBRARY_PATH:-}"
+    fi
+fi
+
+# ============================================================
 # Build BoGEMMS-HPC with user classes
 # ============================================================
 
@@ -111,7 +177,7 @@ cd "${BOGEMMS_BUILD_DIR}" || return 1
 
 if [[ ! -f "Makefile" ]]; then
     cmake \
-        -DGeant4_DIR="${INSTALL_PREFIX}/geant4-v11-1.0-install/lib64/cmake/Geant4"  \
+        -DGeant4_DIR="${Geant4_DIR}" \
         -DUSER_CLASSES=ON \
         -DUSER_CLASSES_PATH="${BOGEMMS_USER_DIR}" \
         "${BOGEMMS_REPO_DIR}" || {
@@ -141,6 +207,7 @@ if [[ ! -d "${CAD_SRC_DIR}" ]]; then
     echo "WARNING: CAD source directory not found:"
     echo "         ${CAD_SRC_DIR}"
 else
+    mkdir -p "${CAD_DST_DIR}"
     rsync -av --ignore-existing "${CAD_SRC_DIR}/" "${CAD_DST_DIR}/"
 fi
 
@@ -148,7 +215,7 @@ echo
 echo "${BOGEMMS_REPO_NAME} successfully built."
 
 # --- exporting PATH ---
-export PATH="$PATH:$BOGEMMS_BUILD_DIR"
-
+export PATH="${PATH}:${BOGEMMS_BUILD_DIR}"
 
 echo "Setup completed."
+
