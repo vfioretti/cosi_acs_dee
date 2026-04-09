@@ -1,7 +1,7 @@
 """
  filterACS.py  -  description
  ---------------------------------------------------------------------------------
- filtering the events of ACS simulation
+ filtering the events of the ACS simulation
  ---------------------------------------------------------------------------------
  copyright            : (C) 2023 Alex Ciabattoni
  email                : alex.ciabattoni@inaf.it
@@ -72,19 +72,19 @@ with open(file_input, "r") as f_in:
 			columns = line.split("=")
 			input_params.append(columns[-1].strip())
 
-G4PATH = input_params[2]
-sim_id = int(input_params[3])
-geom_type = int(input_params[4])
-bgo_absl_type = int(input_params[5])
-refl_type = int(input_params[6])
-refl2_type = int(input_params[7]) # SiPM face (geom4)
-N_in = int(input_params[8])
-source = input_params[9]
-ismorgana = int(input_params[10]) # 0: nohup, 1: slurm
-bias = input_params[11]
-job_name = input_params[12]
-num_threads = int(input_params[13])
-num_tasks = int(input_params[14])
+G4PATH = input_params[3]
+sim_id = int(input_params[4])
+geom_type = int(input_params[5])
+bgo_absl_type = int(input_params[6])
+refl_type = int(input_params[7])
+refl2_type = int(input_params[8]) # SiPM face (geom4)
+N_in = int(input_params[9])
+source = input_params[10]
+isslurm = int(input_params[11]) # 0: nohup, 1: slurm
+bias = input_params[12]
+job_name = input_params[13]
+num_threads = int(input_params[14])
+num_tasks = int(input_params[15])
 
 N_runs = run_stop - run_start + 1
 ang_type = "not_collimated"
