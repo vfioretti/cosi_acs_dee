@@ -33,6 +33,9 @@ import matplotlib.pyplot as plt
 from scipy.optimize import curve_fit
 from scipy.interpolate import interp1d
 import shutil
+import re
+from collections import defaultdict
+
 
 from matplotlib import gridspec
 import matplotlib as mpl
@@ -42,6 +45,7 @@ from astropy.table import Table, Column
 
 import glob
 
+"""
 # Help
 if len(sys.argv) != 3:
 	print("n")
@@ -54,11 +58,11 @@ if len(sys.argv) != 3:
 	print(" \t- run_start = final run number\n")
 	print("\n")
 	exit()
+"""
 
 # Import line command parameters
 arg_list = sys.argv
-run_start = int(arg_list[1])
-run_stop = int(arg_list[2])
+
 
 cosi_acs_dee_repo = os.getenv("COSI_ACS_DEE_DIR")
 
@@ -72,19 +76,21 @@ with open(file_input, "r") as f_in:
 			columns = line.split("=")
 			input_params.append(columns[-1].strip())
 
-G4PATH = input_params[3]
-sim_id = int(input_params[4])
-geom_type = int(input_params[5])
-bgo_absl_type = int(input_params[6])
-refl_type = int(input_params[7])
-refl2_type = int(input_params[8]) # SiPM face (geom4)
-N_in = int(input_params[9])
-source = input_params[10]
-isslurm = int(input_params[11]) # 0: nohup, 1: slurm
-bias = input_params[12]
-job_name = input_params[13]
-num_threads = int(input_params[14])
-num_tasks = int(input_params[15])
+run_start = int(input_params[0])
+run_stop = int(input_params[1])
+G4PATH = input_params[2]
+sim_id = int(input_params[3])
+geom_type = int(input_params[4])
+bgo_absl_type = int(input_params[5])
+refl_type = int(input_params[6])
+refl2_type = int(input_params[7]) # SiPM face (geom4)
+N_in = int(input_params[8])
+source = input_params[9]
+isslurm = int(input_params[10]) # 0: nohup, 1: slurm
+bias = input_params[11]
+job_name = input_params[12]
+num_threads = int(input_params[13])
+num_tasks = int(input_params[14])
 
 N_runs = run_stop - run_start + 1
 ang_type = "not_collimated"
@@ -92,7 +98,7 @@ refl2_dir = "/REFL2_TYPE" + str(refl2_type)
 source_dir = source
 Ene_dir = ""
 
-PATH_SIM = G4PATH+"/SIM"+str(sim_id)+"/GEOM_TYPE"+str(geom_type)+"/BGO_ABSL_TYPE"+str(bgo_absl_type)+"/REFL_TYPE"+str(refl_type)+refl2_dir+"/"+str(N_in)+"/"+source_dir+"/"+ang_type
+path_sim = G4PATH+"/SIM"+str(sim_id)+"/GEOM_TYPE"+str(geom_type)+"/BGO_ABSL_TYPE"+str(bgo_absl_type)+"/REFL_TYPE"+str(refl_type)+refl2_dir+"/"+str(N_in)+"/"+source_dir+"/"+ang_type
 
 # Volume IDs
 scint_copyno = 15
@@ -118,13 +124,12 @@ vecSiPM11Nabs = []
 vecScintNopt = []
 vecScintNoptErr = []
 
-path_sim = PATH_SIM
 N_tot = N_in
 
 refl2_dir = "/REFL2_TYPE" + str(refl2_type)
 
-path_output = "."+"/SIM"+str(sim_id)+"/GEOM_TYPE"+str(geom_type)+"/BGO_ABSL_TYPE"+str(bgo_absl_type)+"/REFL_TYPE"+str(refl_type)+refl2_dir+"/"+str(N_tot)+"/"+source_dir+"/not_collimated/"+str(run_start)+"-"+str(run_stop)+"/"
-path_runs = "."+"/SIM"+str(sim_id)+"/GEOM_TYPE"+str(geom_type)+"/BGO_ABSL_TYPE"+str(bgo_absl_type)+"/REFL_TYPE"+str(refl_type)+refl2_dir+"/"+str(N_tot)+"/"+source_dir+"/not_collimated/"
+path_output = G4PATH+"/ANALYSIS/SIM"+str(sim_id)+"/GEOM_TYPE"+str(geom_type)+"/BGO_ABSL_TYPE"+str(bgo_absl_type)+"/REFL_TYPE"+str(refl_type)+refl2_dir+"/"+str(N_tot)+"/"+source_dir+"/not_collimated/"+str(run_start)+"-"+str(run_stop)+"/"
+path_runs = G4PATH+"/ANALYSIS/SIM"+str(sim_id)+"/GEOM_TYPE"+str(geom_type)+"/BGO_ABSL_TYPE"+str(bgo_absl_type)+"/REFL_TYPE"+str(refl_type)+refl2_dir+"/"+str(N_tot)+"/"+source_dir+"/not_collimated/"
 
 if os.path.exists(path_runs): shutil.rmtree(path_runs)
 
@@ -144,10 +149,22 @@ f = interp1d(wl, pde)
 
 for jrun in range(run_start, run_stop + 1):
 	rundir = "/run"+str(jrun)
+	
+	files = glob.glob(os.path.join(path_sim+rundir, "*.task*.fits.gz"))
+	files_per_task = defaultdict(int)
+	
+	for search_file in files:
+		m = re.search(r'task(\d+)', search_file)
+		if m:
+			task = int(m.group(1))
+			files_per_task[task] += 1
+    
+	num_tasks = len(files_per_task)
+
 	N_in_per_task = int(N_in / num_tasks) # number of events per task
 
 	for task in range(num_tasks):
-		N_fits = len(glob.glob1(path_sim+rundir,"*.task"+str(task)+".fits.gz"))
+		N_fits = files_per_task[task]
 
 		for jfits in range(N_fits):
 
