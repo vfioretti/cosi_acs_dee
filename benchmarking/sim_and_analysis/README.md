@@ -44,21 +44,21 @@ will be created, where each {} depends on the parameters set in 'runSiPM.txt'.
 ### Description
 
 - filterACS.py: python script to filter the simulation output
-- SiPM_PDE.txt: photon detection efficiency (PDE) of SiPMs
+- SiPM_PDE.txt: photon detection efficiency (PDE) of SiPMs, placed in $COSI_ACS_DEE_DIR/acs_detector_params/
 
 ### Usage
 
-Use filterACS.py to filter the output files from simulation (.fits.gz files) and write the relevant information to a .dat file.
+Use filterACS.py to filter the output files from simulation (.fits.gz files) and write the relevant information to a .dat file. The script python read the runSiPM.txt configuration file contained in the Simulations directory.
 In a directory (different from the directory of the simulations), launch:
 
 ```
-python3 filterACS.py SIM_DIR run_start run_stop
+python3 filterACS.py 
 ```
 
 Example:
 
 ```
-python3 filterACS.py ../Simulations/SIM0/GEOM_TYPE9/BGO_ABSL_TYPE6/REFL_TYPE1/REFL2_TYPE4/1000000/Cs137/not_collimated/ 1 1
+python3 filterACS.py 
 ```
 
 This will create a directory like 
